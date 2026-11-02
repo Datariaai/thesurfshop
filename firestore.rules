@@ -1,0 +1,25 @@
+rules_version = '2';
+
+// Reglas de thesurfshop.ar.
+// Solo los emails de la lista pueden cargar o descargar stock.
+// La lista de modelos se puede leer sin cuenta (la va a usar la página pública).
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function esAdmin() {
+      return request.auth != null
+        && request.auth.token.email in [
+          'CAMBIAR-POR-EL-EMAIL-DEL-CLIENTE@gmail.com'
+        ];
+    }
+
+    match /modelos/{id} {
+      allow read: if true;
+      allow write: if esAdmin();
+    }
+
+    match /movimientos/{id} {
+      allow read, write: if esAdmin();
+    }
+  }
+}

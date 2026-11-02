@@ -1,0 +1,251 @@
+<!doctype html>
+<html lang="es-AR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="robots" content="noindex, nofollow">
+  <meta name="theme-color" content="#061a30">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="ERP TSS">
+  <title>ERP · thesurfshop.ar</title>
+  <link rel="icon" href="img/favicon.png">
+  <link rel="apple-touch-icon" href="img/icon-180.png">
+  <script>
+    // El manifest (instalar como app) solo funciona publicado; abriendo el archivo directo da error.
+    if (location.protocol.startsWith('http')) {
+      document.head.append(Object.assign(document.createElement('link'), { rel: 'manifest', href: 'manifest.webmanifest' }));
+    }
+  </script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:ital,wdth,wght@0,62..125,400..900;1,62..125,400..900&display=swap">
+  <link rel="stylesheet" href="css/marca.css">
+  <link rel="stylesheet" href="css/stock.css">
+  <script defer src="js/firebase-config.js"></script>
+  <script defer src="js/catalogo-inicial.js"></script>
+  <script defer src="js/datos.js"></script>
+  <script defer src="js/stock.js"></script>
+</head>
+<body>
+
+  <!-- Ingreso -->
+  <section id="login" class="login mar" hidden>
+    <div class="login-caja">
+      <img src="img/logo.webp" alt="" class="login-logo" width="140" height="140">
+      <h1 class="titulo-racing login-titulo">ERP</h1>
+      <form id="form-login" autocomplete="on">
+        <label class="campo">
+          <span>Email</span>
+          <input type="email" name="email" autocomplete="username" inputmode="email" required>
+        </label>
+        <label class="campo">
+          <span>Contraseña</span>
+          <input type="password" name="clave" autocomplete="current-password" required>
+        </label>
+        <p class="login-error" id="login-error" role="alert"></p>
+        <button class="btn btn-amarillo btn-grande" type="submit">Entrar</button>
+      </form>
+      <button id="btn-entrar-directo" class="btn btn-amarillo btn-grande" type="button" hidden>Entrar</button>
+      <p class="login-nota" id="login-nota"></p>
+    </div>
+  </section>
+
+  <!-- Sistema -->
+  <div id="app" class="app" hidden>
+
+    <aside class="panel" id="panel" aria-label="Menú">
+      <div class="panel-marca">
+        <img src="img/logo.webp" alt="" width="44" height="44">
+        <div>
+          <img src="img/wordmark.webp" alt="thesurfshop.ar" class="panel-wordmark" width="1400" height="225">
+          <p>ERP</p>
+        </div>
+      </div>
+
+      <nav class="panel-nav">
+        <button class="nav-item activo" data-vista="stock" type="button">
+          <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" d="M4 7.5 12 4l8 3.5v9L12 20l-8-3.5zM4 7.5 12 11l8-3.5M12 11v9"/></svg>
+          <span>Stock</span>
+          <b class="nav-num" id="nav-num-stock"></b>
+        </button>
+        <button class="nav-item" data-vista="ingresos" type="button">
+          <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M12 4v11M7 10l5 5 5-5M4 20h16"/></svg>
+          <span>Ingresos</span>
+          <b class="nav-num" id="nav-num-ingresos"></b>
+        </button>
+        <button class="nav-item" data-vista="egresos" type="button">
+          <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M12 15V4M7 9l5-5 5 5M4 20h16"/></svg>
+          <span>Egresos</span>
+          <b class="nav-num" id="nav-num-egresos"></b>
+        </button>
+        <button class="nav-item" data-vista="ventas" type="button">
+          <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>
+          <span>Ventas</span>
+          <b class="nav-num" id="nav-num-ventas"></b>
+        </button>
+      </nav>
+
+      <div class="panel-pie">
+        <p class="panel-usuario" id="panel-usuario"></p>
+        <button class="btn btn-borde btn-chico" id="btn-salir" type="button">Cerrar sesión</button>
+      </div>
+    </aside>
+    <div class="panel-fondo" id="panel-fondo" hidden></div>
+
+    <div class="contenido">
+      <header class="cabecera">
+        <button class="btn-icono btn-menu" id="btn-menu" type="button" aria-label="Abrir menú" aria-controls="panel" aria-expanded="false">
+          <svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>
+        </button>
+        <h1 class="cabecera-titulo" id="cabecera-titulo">Stock</h1>
+        <div class="cabecera-acciones" id="cabecera-acciones"></div>
+      </header>
+
+      <main>
+        <!-- Stock -->
+        <section id="vista-stock" class="vista">
+          <div class="kpis" id="kpis-stock"></div>
+
+          <div class="herramientas">
+            <div class="buscador">
+              <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><circle cx="11" cy="11" r="7" fill="none" stroke="currentColor" stroke-width="2"/><path d="m20 20-3.5-3.5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+              <input type="search" id="buscar" placeholder="Buscar modelo, marca o color" autocomplete="off" enterkeyhint="search">
+            </div>
+          </div>
+
+          <div class="tabla-envoltura">
+            <table class="tabla-stock" id="tabla-stock"></table>
+          </div>
+          <ul class="tarjetas-stock" id="tarjetas-stock"></ul>
+
+          <div class="vacio" id="vacio-modelos" hidden>
+            <p>Todavía no hay modelos cargados.</p>
+            <button class="btn btn-amarillo" id="btn-iniciales" type="button">Cargar los 15 modelos de las fotos</button>
+          </div>
+        </section>
+
+        <!-- Ingresos / Egresos (misma estructura) -->
+        <section id="vista-movs" class="vista" hidden>
+          <div class="kpis" id="kpis-movs"></div>
+          <div id="lista-movs"></div>
+        </section>
+
+        <!-- Ventas: se arma sola con los egresos (cada egreso es una venta) -->
+        <section id="vista-ventas" class="vista" hidden>
+          <div class="periodos" role="tablist" aria-label="Período">
+            <button class="chip" data-periodo="hoy" role="tab" aria-selected="false">Hoy</button>
+            <button class="chip" data-periodo="7" role="tab" aria-selected="false">Últimos 7 días</button>
+            <button class="chip activo" data-periodo="mes" role="tab" aria-selected="true">Este mes</button>
+            <button class="chip" data-periodo="todo" role="tab" aria-selected="false">Todo</button>
+          </div>
+          <div class="kpis" id="kpis-ventas"></div>
+          <h2 class="subtitulo">Ventas por modelo</h2>
+          <div class="tabla-envoltura tabla-ventas-env">
+            <table class="tabla-stock tabla-ventas" id="tabla-ventas"></table>
+          </div>
+          <ul class="tarjetas-stock" id="tarjetas-ventas"></ul>
+        </section>
+      </main>
+    </div>
+  </div>
+
+  <!-- Cartel: registrar ingreso o egreso (uno o varios modelos, varios talles) -->
+  <dialog id="cartel" class="cartel cartel-ancho" aria-labelledby="cartel-titulo">
+    <form id="form-registro" class="cartel-form" novalidate>
+      <header class="cartel-cabecera">
+        <h2 id="cartel-titulo">Registrar ingreso</h2>
+        <button class="btn-icono" data-cerrar type="button" aria-label="Cerrar">
+          <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></svg>
+        </button>
+      </header>
+
+      <div class="cartel-cuerpo">
+        <section class="paso">
+          <h3><span>1</span> Modelos y talles</h3>
+          <div class="items" id="reg-items"></div>
+          <div id="reg-selector" class="selector">
+            <div class="selector-cab">
+              <div class="buscador">
+                <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><circle cx="11" cy="11" r="7" fill="none" stroke="currentColor" stroke-width="2"/><path d="m20 20-3.5-3.5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+                <input type="search" id="reg-buscar" placeholder="Buscar modelo" autocomplete="off" aria-label="Buscar modelo">
+              </div>
+              <button type="button" class="btn btn-amarillo btn-nuevo-modelo" data-nuevo-modelo>+ Modelo nuevo</button>
+            </div>
+            <ul class="opciones-modelo" id="reg-opciones" aria-label="Modelos"></ul>
+          </div>
+          <div class="agregar-fila" id="reg-agregar-fila" hidden>
+            <button type="button" class="btn btn-borde" id="reg-agregar">+ Agregar otro modelo</button>
+            <button type="button" class="btn btn-borde btn-nuevo-modelo" data-nuevo-modelo>+ Modelo nuevo</button>
+          </div>
+        </section>
+
+        <section class="paso">
+          <h3><span>2</span> Nota <small>(opcional)</small></h3>
+          <input type="text" id="reg-nota" class="nota" maxlength="120" placeholder="Cliente, proveedor, envío, etc." aria-label="Nota">
+        </section>
+      </div>
+
+      <footer class="cartel-pie">
+        <p class="resumen" id="reg-resumen" aria-live="polite"></p>
+        <button class="btn btn-grande" type="submit" id="reg-ok" disabled>Registrar</button>
+      </footer>
+    </form>
+  </dialog>
+
+  <!-- Cartel: crear / editar modelo -->
+  <dialog id="hoja-form" class="cartel" aria-labelledby="hf-titulo">
+    <form id="form-modelo" class="cartel-form" novalidate>
+      <header class="cartel-cabecera">
+        <h2 id="hf-titulo">Nuevo modelo</h2>
+        <button class="btn-icono" data-cerrar type="button" aria-label="Cerrar">
+          <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></svg>
+        </button>
+      </header>
+
+      <div class="cartel-cuerpo form-modelo">
+        <label class="hf-foto">
+          <img id="hf-foto-img" alt="" hidden>
+          <span id="hf-foto-texto">+ Foto</span>
+          <input type="file" id="hf-foto" accept="image/*" class="sr-only">
+        </label>
+
+        <label class="campo"><span>Nombre del modelo *</span><input name="nombre" maxlength="60" placeholder="Ej: Pinstripe"></label>
+        <label class="campo"><span>Marca</span><input name="marca" list="marcas" maxlength="40" placeholder="Billabong"></label>
+        <div class="dos">
+          <label class="campo"><span>Costo</span><input name="costo" type="text" inputmode="numeric" pattern="[0-9]*" autocomplete="off" placeholder="$"></label>
+          <label class="campo"><span>Precio de venta</span><input name="precio" type="text" inputmode="numeric" pattern="[0-9]*" autocomplete="off" placeholder="$"></label>
+        </div>
+        <datalist id="marcas">
+          <option value="Billabong"><option value="Quiksilver"><option value="Rip Curl"><option value="O'Neill"><option value="Volcom"><option value="Hurley"><option value="Oakley">
+        </datalist>
+        <label class="campo"><span>Color / descripción</span><input name="color" maxlength="60" placeholder="Azul marino rayado"></label>
+
+        <fieldset class="campo">
+          <legend>Talles</legend>
+          <div class="talles-elegir" id="hf-talles"></div>
+          <div class="talle-otro">
+            <input id="hf-talle-otro" maxlength="6" placeholder="Otro talle" aria-label="Agregar otro talle">
+            <button type="button" class="btn btn-borde" id="hf-talle-agregar">Agregar</button>
+          </div>
+        </fieldset>
+        <p class="hf-ayuda">El stock no se toca acá: se carga desde <b>Ingresos</b>.</p>
+      </div>
+
+      <footer class="cartel-pie">
+        <p class="hf-error" id="hf-error" role="alert"></p>
+        <div class="pie-botones">
+          <button class="btn btn-peligro" type="button" id="hf-borrar" hidden>Borrar</button>
+          <button class="btn btn-amarillo btn-grande" type="submit">Guardar modelo</button>
+        </div>
+      </footer>
+    </form>
+  </dialog>
+
+  <div class="toast" id="toast" role="status" aria-live="polite" popover="manual">
+    <span id="toast-texto"></span>
+    <button type="button" id="toast-deshacer">Deshacer</button>
+  </div>
+
+</body>
+</html>
