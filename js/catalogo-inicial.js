@@ -2,11 +2,12 @@
 // Arrancan con stock 0: se cargan desde /stock.html.
 // Los nombres son provisorios: el cliente los puede cambiar desde "Editar modelo".
 
-export const TALLES_BASE = ['28', '30', '32', '34', '36', '38'];
+(function () {
+const TALLES_BASE = ['28', '30', '32', '34', '36', '38'];
 
 const f = (...n) => n.map(i => `img/fotos/${String(i).padStart(2, '0')}.jpg`);
 
-export const CATALOGO_INICIAL = [
+const CATALOGO_INICIAL = [
   { id: 'bb-gold-dots',       nombre: 'Gold Dots',          marca: 'Billabong',  color: 'Negro y dorado',      fotos: f(0, 13, 16, 11) },
   { id: 'bb-pinstripe-azul',  nombre: 'Pinstripe',          marca: 'Billabong',  color: 'Azul marino rayado',  fotos: f(3, 4, 5, 6) },
   { id: 'bb-pinstripe-rojo',  nombre: 'Pinstripe Red',      marca: 'Billabong',  color: 'Rojo rayado',         fotos: f(12, 7, 8, 9) },
@@ -28,3 +29,6 @@ export const CATALOGO_INICIAL = [
   orden: i,
   talles: Object.fromEntries(TALLES_BASE.map(t => [t, 0])),
 }));
+
+window.TSS = Object.assign(window.TSS || {}, { TALLES_BASE, CATALOGO_INICIAL });
+})();

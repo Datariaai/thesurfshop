@@ -11,13 +11,21 @@
   <title>Stock · thesurfshop.ar</title>
   <link rel="icon" href="img/favicon.png">
   <link rel="apple-touch-icon" href="img/icon-180.png">
-  <link rel="manifest" href="manifest.webmanifest">
+  <script>
+    // El manifest (instalar como app) solo funciona publicado; abriendo el archivo directo da error.
+    if (location.protocol.startsWith('http')) {
+      document.head.append(Object.assign(document.createElement('link'), { rel: 'manifest', href: 'manifest.webmanifest' }));
+    }
+  </script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:ital,wdth,wght@0,62..125,400..900;1,62..125,400..900&display=swap">
   <link rel="stylesheet" href="css/marca.css">
   <link rel="stylesheet" href="css/stock.css">
-  <script type="module" src="js/stock.js"></script>
+  <script defer src="js/firebase-config.js"></script>
+  <script defer src="js/catalogo-inicial.js"></script>
+  <script defer src="js/datos.js"></script>
+  <script defer src="js/stock.js"></script>
 </head>
 <body>
 

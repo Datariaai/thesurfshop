@@ -3,14 +3,16 @@
 // modelos/{id}:     { nombre, marca, color, precio, fotos[], fotoData, orden, talles: { "32": 3, ... } }
 // movimientos/{id}: { modeloId, modelo, talle, delta, tipo: venta|ingreso|ajuste, fecha, quien }
 
-import { firebaseConfig } from './firebase-config.js';
-import { CATALOGO_INICIAL } from './catalogo-inicial.js';
+// Script común (sin módulos) para que funcione abriendo el HTML directo desde la carpeta.
+(function () {
+const firebaseConfig = window.TSS_FIREBASE || {};
+const { CATALOGO_INICIAL } = window.TSS;
 
-export const MODO_PRUEBA = !firebaseConfig.apiKey;
+const MODO_PRUEBA = !firebaseConfig.apiKey;
 
 const ORDEN_LETRAS = ['XXS', 'XS', 'S', 'M', 'L', 'XL', 'XXL', 'XXXL', 'U'];
 
-export function ordenarTalles(talles) {
+function ordenarTalles(talles) {
   const peso = t => {
     if (/^\d+(\.\d+)?$/.test(t)) return [0, parseFloat(t)];
     const i = ORDEN_LETRAS.indexOf(t.toUpperCase());
@@ -22,9 +24,9 @@ export function ordenarTalles(talles) {
   });
 }
 
-export const totalModelo = m => Object.values(m.talles || {}).reduce((s, n) => s + (n || 0), 0);
+const totalModelo = m => Object.values(m.talles || {}).reduce((s, n) => s + (n || 0), 0);
 
-export const fotoPrincipal = m => m.fotoData || (m.fotos && m.fotos[0]) || 'img/logo.webp';
+const fotoPrincipal = m => m.fotoData || (m.fotos && m.fotos[0]) || 'img/logo.webp';
 
 const ordenarModelos = lista =>
   lista.sort((a, b) => (a.orden ?? 999) - (b.orden ?? 999) || a.nombre.localeCompare(b.nombre));
@@ -208,4 +210,8 @@ async function crearFirebase() {
   };
 }
 
-export const datos = MODO_PRUEBA ? crearDemo() : await crearFirebase();
+Object.assign(window.TSS, {
+  MODO_PRUEBA, ordenarTalles, totalModelo, fotoPrincipal,
+  datos: MODO_PRUEBA ? Promise.resolve(crearDemo()) : crearFirebase(),
+});
+})();

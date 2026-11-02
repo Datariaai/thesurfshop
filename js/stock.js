@@ -1,5 +1,13 @@
-import { datos, MODO_PRUEBA, ordenarTalles, totalModelo, fotoPrincipal } from './datos.js';
-import { TALLES_BASE } from './catalogo-inicial.js';
+(async function () {
+const { MODO_PRUEBA, ordenarTalles, totalModelo, fotoPrincipal, TALLES_BASE } = window.TSS;
+let datos;
+try {
+  datos = await window.TSS.datos;
+} catch {
+  document.getElementById('login').hidden = false;
+  document.getElementById('login-nota').textContent = 'No se pudo conectar. Revisá internet y recargá la página.';
+  return;
+}
 
 const $ = s => document.querySelector(s);
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
@@ -540,3 +548,4 @@ $('#toast-deshacer').addEventListener('click', async () => {
   await datos.deshacer(id);
   toast('Listo, se deshizo.');
 });
+})();

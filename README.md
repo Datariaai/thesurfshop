@@ -44,11 +44,9 @@ Los 15 modelos iniciales salen de las fotos que mandó el cliente (`js/catalogo-
 
 ## Probar en la compu
 
-```
-python -m http.server 5173
-```
+Abrir `stock.html` con doble clic: funciona en modo prueba.
 
-Y abrir http://localhost:5173/stock.html. Hace falta un servidor porque los módulos JS no andan abriendo el archivo con doble clic.
+Con Firebase conectado, el ingreso con usuario no funciona abriendo el archivo directo (Firebase solo acepta páginas publicadas). Para probarlo en la compu: `python -m http.server 5173` y abrir http://localhost:5173/stock.html.
 
 ## Material original
 
