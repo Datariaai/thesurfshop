@@ -6,7 +6,7 @@ Cliente de Dataria. Venta de boardshorts vintage (Billabong, Quiksilver). Instag
 
 | Parte | Archivo | Estado |
 |---|---|---|
-| Sistema de stock | `stock.html` | Listo. Funciona en modo prueba hasta conectar Firebase |
+| ERP (stock, ingresos, egresos, ventas) | `stock.html` | Listo. Guarda en el navegador hasta conectar Firebase |
 | Página pública | — | Pendiente (se hace después) |
 
 Es HTML, CSS y JS sin compilar: no hay que instalar nada. Se publica tal cual (Vercel o Firebase Hosting).
@@ -15,12 +15,12 @@ Es HTML, CSS y JS sin compilar: no hay que instalar nada. Se publica tal cual (V
 
 Panel a la izquierda (en el celular se abre con ☰) con cuatro módulos:
 
-- **Stock**: resumen (unidades, agotados, costo del stock y valor de venta) y una tabla con cada modelo y la cantidad por talle. El encabezado queda fijo al bajar. En el celular se ve como tarjetas. Desde acá se crean y editan modelos.
+- **Stock**: resumen (unidades, agotados, costo del stock y valor de venta) y una tabla con cada modelo, la cantidad por talle y el total. El encabezado queda fijo al bajar. En el celular se ve como tarjetas. Desde acá se crean y editan modelos.
 - **Ingresos**: entrada de mercadería. Cada talle lleva su costo por unidad (se sugiere el último costo de ese modelo).
 - **Egresos**: salida de mercadería. Cada egreso es una venta: cada talle lleva su precio por unidad (se sugiere el precio del modelo).
 - **Ventas**: se arma sola con los egresos. Muestra lo facturado, las unidades, la cantidad de ventas y el ticket promedio, y el detalle por modelo (unidades, talles vendidos, precio promedio, facturado y última venta). Se puede ver hoy, los últimos 7 días, este mes o todo.
 
-**Registrar un ingreso o egreso** (con el botón de arriba de cada módulo): 1) uno o varios modelos, cada uno con la cantidad de cada talle, 2) nota opcional.
+**Registrar un ingreso o egreso** (con el botón de arriba de cada módulo): 1) uno o varios modelos; en cada uno se tocan los talles y se abre una línea con cantidad y costo (o precio), 2) nota opcional.
 - En un ingreso se puede agregar un talle que el modelo no tenía, y crear un modelo nuevo sin salir del cartel.
 - En un egreso solo aparecen los talles con stock, y no deja sacar más de lo que hay.
 - Las cantidades y precios abren el teclado de números en el celular.

@@ -307,62 +307,68 @@ tr.agotado .col-total { color: var(--peligro); }
 .selector-cab { display: flex; gap: 8px; align-items: stretch; }
 .selector-cab .buscador { flex: 1; min-width: 0; }
 .btn-nuevo-modelo { min-height: 44px; padding: 0 14px; font-size: 14px; box-shadow: 3px 3px 0 var(--rosa); }
-.agregar-fila { display: flex; gap: 8px; margin-top: 10px; }
-.agregar-fila .btn { flex: 1; min-height: 42px; font-size: 14px; border-style: dashed; }
+.agregar-fila { display: flex; gap: 8px; margin-top: 8px; }
+.agregar-fila .btn { flex: 1; min-height: 40px; font-size: 14px; border-style: dashed; }
 .agregar-fila .btn-nuevo-modelo { box-shadow: none; }
 
-.items { display: grid; gap: 10px; }
+.items { display: grid; gap: 8px; }
 .items:empty { display: none; }
-.item { border-radius: 14px; background: var(--profundo); border: 1px solid var(--linea); padding: 8px 10px 10px; }
-.item-cab { display: grid; grid-template-columns: 34px 1fr auto; gap: 10px; align-items: center; }
-.item-cab img { width: 34px; height: 42px; object-fit: cover; border-radius: 6px; background: var(--abismo); }
+.item { border-radius: 12px; background: var(--profundo); border: 1px solid var(--linea); padding: 8px 10px; }
+.item-cab { display: grid; grid-template-columns: 30px 1fr auto; gap: 10px; align-items: center; }
+.item-cab img { width: 30px; height: 38px; object-fit: cover; border-radius: 6px; background: var(--abismo); }
 .item-cab b { display: block; font-size: 15px; line-height: 1.2; }
 .item-cab small { font-size: 12px; color: var(--texto-suave); }
-.item-cab .btn-icono { width: 36px; height: 36px; }
-.item-talles { display: grid; grid-template-columns: repeat(auto-fill, minmax(132px, 1fr)); gap: 6px; margin-top: 8px; }
-.it-talle {
-  display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 6px;
-  padding: 3px 3px 3px 10px; border-radius: 10px; background: var(--oceano); border: 1.5px solid transparent;
+.item-cab .btn-icono { width: 34px; height: 34px; }
+
+/* talles como botoncitos */
+.chips-talles { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.chip-talle {
+  display: inline-flex; align-items: baseline; gap: 3px; height: 34px; padding: 0 10px;
+  border-radius: 9px; border: 1.5px solid var(--linea); background: transparent;
+  font-size: 15px; font-weight: 800; color: var(--texto); touch-action: manipulation;
 }
-.it-talle.con { border-color: var(--amarillo); }
-.cartel.baja .it-talle.con { border-color: var(--rosa); }
-.it-t b { display: block; font-size: 17px; font-weight: 900; font-style: italic; line-height: 1; }
-.it-t small { font-size: 10px; color: var(--texto-suave); }
-.it-stepper { display: grid; grid-template-columns: 32px 34px 32px; align-items: center; }
+.chip-talle small { font-size: 10px; font-weight: 600; color: var(--texto-suave); }
+.chip-talle.activo { background: var(--amarillo); border-color: var(--amarillo); color: var(--abismo); }
+.chip-talle.activo small { color: var(--abismo); opacity: .7; }
+.cartel.baja .chip-talle.activo { background: var(--rosa); border-color: var(--rosa); color: #fff; }
+.cartel.baja .chip-talle.activo small { color: #fff; }
+.chip-talle:disabled { opacity: .3; }
+.chip-otro {
+  width: 72px; height: 34px; padding: 0 8px; border-radius: 9px;
+  border: 1.5px dashed var(--linea); background: transparent; font-size: 14px;
+}
+.chip-otro:focus { border-color: var(--amarillo); outline: none; }
+.item-ayuda { margin: 6px 0 0; font-size: 12px; color: var(--texto-suave); }
+
+/* una línea finita por talle elegido: talle · cantidad · monto · subtotal */
+.lineas-talles { display: grid; gap: 4px; margin-top: 8px; }
+.linea-talle {
+  display: grid; grid-template-columns: 34px auto minmax(0, 1fr) auto; gap: 8px; align-items: center;
+  padding: 3px 4px 3px 10px; border-radius: 9px; background: var(--oceano);
+}
+.lt-t { font-size: 15px; font-weight: 900; font-style: italic; }
+.it-stepper { display: grid; grid-template-columns: 28px 30px 28px; align-items: center; }
 .it-stepper button {
-  height: 34px; border: 0; border-radius: 8px; font-size: 18px; font-weight: 900; line-height: 1;
+  height: 30px; border: 0; border-radius: 7px; font-size: 17px; font-weight: 900; line-height: 1;
   background: var(--tarjeta-2); color: var(--texto); touch-action: manipulation;
 }
 .it-stepper button:disabled { opacity: .3; }
 .it-stepper input {
-  width: 100%; height: 34px; padding: 0; text-align: center; border: 0; background: transparent;
-  font-size: 17px; font-weight: 900; font-variant-numeric: tabular-nums;
+  width: 100%; height: 30px; padding: 0; text-align: center; border: 0; background: transparent;
+  font-size: 16px; font-weight: 900; font-variant-numeric: tabular-nums;
 }
-.it-stepper input:focus { outline: 2px solid var(--amarillo); border-radius: 8px; }
-
-/* egreso: una fila por talle con cantidad y precio */
-.eg-filas { display: grid; gap: 6px; margin-top: 8px; }
-.eg-fila { grid-template-columns: 44px auto minmax(0, 1fr) auto; }
-.eg-sub { min-width: 0; font-size: 13px; font-weight: 800; color: var(--amarillo); text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
-.eg-sub:empty { display: none; }
-.eg-fila:has(.eg-sub:empty) { grid-template-columns: 44px auto minmax(0, 1fr); }
+.it-stepper input:focus { outline: 2px solid var(--amarillo); border-radius: 7px; }
+.eg-sub { font-size: 13px; font-weight: 800; color: var(--amarillo); text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
 .moneda { position: relative; display: block; min-width: 0; }
-.moneda::before { content: '$'; position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: var(--texto-suave); font-weight: 700; font-size: 14px; }
+.moneda::before { content: '$'; position: absolute; left: 9px; top: 50%; transform: translateY(-50%); color: var(--texto-suave); font-weight: 700; font-size: 13px; }
 .moneda input {
-  width: 100%; height: 34px; padding: 0 8px 0 22px; border-radius: 8px;
+  width: 100%; height: 30px; padding: 0 8px 0 20px; border-radius: 7px;
   border: 1.5px solid var(--linea); background: var(--abismo); font-size: 16px; font-weight: 700; font-variant-numeric: tabular-nums;
 }
 .moneda input:focus { border-color: var(--amarillo); outline: none; }
 .moneda input.falta { border-color: var(--peligro); }
-.item-total { margin-top: 8px; text-align: right; font-weight: 900; color: var(--amarillo); font-variant-numeric: tabular-nums; }
+.item-total { margin-top: 6px; text-align: right; font-size: 14px; font-weight: 900; color: var(--amarillo); font-variant-numeric: tabular-nums; }
 .item-total:empty { display: none; }
-
-.item-otro { display: flex; gap: 6px; margin-top: 8px; }
-.item-otro input {
-  flex: 1; min-width: 0; min-height: 38px; padding: 0 12px; border-radius: 10px;
-  border: 1.5px dashed var(--linea); background: transparent; font-size: 15px;
-}
-.item-otro .btn { min-height: 38px; font-size: 14px; padding: 0 14px; }
 
 .paso h3 small { font-weight: 500; color: var(--texto-suave); }
 
@@ -422,6 +428,6 @@ tr.agotado .col-total { color: var(--peligro); }
 /* En pantallas anchas, las filas compactas no se estiran de punta a punta. */
 @media (min-width: 700px) {
   .op-linea { grid-template-columns: minmax(140px, 280px) 50px 40px 100px; justify-content: start; }
-  .eg-fila, .eg-fila:has(.eg-sub:empty) { grid-template-columns: 44px auto 180px auto; justify-content: start; }
+  .linea-talle { grid-template-columns: 34px auto 150px 110px; justify-content: start; }
   .eg-sub { text-align: left; }
 }

@@ -242,14 +242,13 @@ function renderStock() {
       </div></td>
       ${celdas}
       <td class="col-total">${t}</td>
-      <td>${m.precio ? pesos(m.precio) : '<span class="n-talle no">—</span>'}</td>
     </tr>`;
   }).join('');
   $('#tabla-stock').innerHTML = `<thead><tr>
       <th class="col-modelo" scope="col">Modelo</th>
       ${talles.map(t => `<th scope="col">${esc(t)}</th>`).join('')}
-      <th scope="col">Total</th><th scope="col">Precio</th>
-    </tr></thead><tbody>${filas || `<tr><td colspan="${talles.length + 3}" class="vacio">No hay modelos con ese nombre.</td></tr>`}</tbody>`;
+      <th scope="col">Total</th>
+    </tr></thead><tbody>${filas || `<tr><td colspan="${talles.length + 2}" class="vacio">No hay modelos con ese nombre.</td></tr>`}</tbody>`;
 
   // Tarjetas (celular).
   $('#tarjetas-stock').innerHTML = visibles.map(m => {
@@ -447,7 +446,7 @@ function abrirRegistro(tipo, modeloId = null) {
 }
 
 function agregarItem(id) {
-  if (!reg.items.some(it => it.modeloId === id)) reg.items.push({ modeloId: id, cant: {}, precios: {}, extras: [] });
+  if (!reg.items.some(it => it.modeloId === id)) reg.items.push({ modeloId: id, cant: {}, precios: {}, extras: [], activos: [] });
   reg.buscando = false;
   renderCartel();
 }
@@ -481,45 +480,56 @@ function stepper(t, n, sinStock, tope) {
   </span>`;
 }
 
+// Cada modelo muestra sus talles como botoncitos; al tocar uno se abre una línea con cantidad y monto.
 function renderItems() {
   const egreso = esEgreso();
   const Monto = egreso ? 'Precio' : 'Costo';
   $('#reg-items').innerHTML = reg.items.map((it, idx) => {
     const m = modeloPorId(it.modeloId);
     if (!m) return '';
-    // Egreso: solo los talles con stock. Ingreso: todos, más los que se agreguen.
-    const talles = egreso
-      ? ordenarTalles(Object.keys(m.talles || {})).filter(t => (m.talles[t] || 0) > 0)
-      : ordenarTalles([...new Set([...Object.keys(m.talles || {}), ...it.extras])]);
-    const filas = talles.map(t => {
+    const todos = ordenarTalles([...new Set([...Object.keys(m.talles || {}), ...it.extras])]);
+    const chips = todos.map(t => {
+      const hay = m.talles?.[t] || 0;
+      const activo = it.activos.includes(t);
+      return `<button type="button" class="chip-talle ${activo ? 'activo' : ''}" data-chip="${esc(t)}" aria-pressed="${activo}"
+        aria-label="Talle ${esc(t)}, hay ${hay}" ${egreso && hay <= 0 ? 'disabled' : ''}>${esc(t)}${hay ? `<small>${hay}</small>` : ''}</button>`;
+    }).join('');
+    const otro = egreso ? '' : '<input type="text" class="chip-otro" maxlength="6" placeholder="+ otro" data-otro-input aria-label="Agregar otro talle">';
+    const lineas = ordenarTalles(it.activos).map(t => {
       const hay = m.talles?.[t] || 0;
       const n = it.cant[t] || 0;
-      const nuevo = !(t in (m.talles || {}));
-      return `<div class="it-talle eg-fila ${n ? 'con' : ''}" data-talle="${esc(t)}">
-        <span class="it-t"><b>${esc(t)}</b><small>${nuevo ? 'nuevo' : `hay ${hay}`}</small></span>
+      return `<div class="linea-talle" data-talle="${esc(t)}">
+        <span class="lt-t">${esc(t)}</span>
         ${stepper(t, n, false, egreso && n >= hay)}
         <span class="moneda"><input ${NUMERICO} data-precio value="${esc(it.precios[t] ?? '')}" placeholder="${Monto}"
           aria-label="${Monto} por unidad del talle ${esc(t)}"></span>
         <span class="eg-sub" data-sub></span>
       </div>`;
     }).join('');
-    const otro = egreso ? '' : `
-      <div class="item-otro">
-        <input type="text" maxlength="6" placeholder="Otro talle (ej: 40)" data-otro-input aria-label="Agregar otro talle a ${esc(m.nombre)}">
-        <button type="button" class="btn btn-borde" data-otro>+ Talle</button>
-      </div>`;
     return `<div class="item" data-idx="${idx}">
       <div class="item-cab">
-        <img src="${esc(fotoPrincipal(m))}" alt="" width="34" height="42">
+        <img src="${esc(fotoPrincipal(m))}" alt="" width="30" height="38">
         <span><b>${esc(m.nombre)}</b><small>${esc(m.marca || '')} · ${totalModelo(m)} en stock</small></span>
         <button type="button" class="btn-icono" data-quitar aria-label="Quitar ${esc(m.nombre)}">${ICONO_CERRAR}</button>
       </div>
-      <div class="eg-filas">${filas || '<p class="vacio">Este modelo no tiene stock.</p>'}</div>
-      ${otro}
+      <div class="chips-talles">${chips}${otro}</div>
+      ${lineas ? `<div class="lineas-talles">${lineas}</div>` : `<p class="item-ayuda">Tocá los talles que ${egreso ? 'salen' : 'entran'}.</p>`}
       <div class="item-total" data-subtotal></div>
     </div>`;
   }).join('');
   reg.items.forEach((it, idx) => actualizarSubtotal(idx));
+}
+
+function activarTalle(it, m, t) {
+  if (it.activos.includes(t)) return;
+  it.activos.push(t);
+  it.cant[t] = it.cant[t] || 1;
+  if ((it.precios[t] ?? '') === '' && montoSugerido(m)) it.precios[t] = montoSugerido(m);
+}
+
+function desactivarTalle(it, t) {
+  it.activos = it.activos.filter(x => x !== t);
+  delete it.cant[t];
 }
 
 function renderOpcionesModelo() {
@@ -541,15 +551,8 @@ function actualizarCelda(celda, it, m) {
   const t = celda.dataset.talle;
   const n = it.cant[t] || 0;
   const hay = m.talles?.[t] || 0;
-  celda.classList.toggle('con', n > 0);
   celda.querySelector('[data-paso="-1"]').disabled = n <= 0;
   celda.querySelector('[data-paso="1"]').disabled = esEgreso() && n >= hay;
-  // Al cargar un talle por primera vez se sugiere el costo o el precio del modelo.
-  const monto = celda.querySelector('[data-precio]');
-  if (monto && n > 0 && (it.precios[t] ?? '') === '' && montoSugerido(m)) {
-    it.precios[t] = montoSugerido(m);
-    monto.value = it.precios[t];
-  }
 }
 
 function actualizarSubtotal(idx) {
@@ -557,7 +560,7 @@ function actualizarSubtotal(idx) {
   if (!itemEl) return;
   const it = reg.items[idx];
   let total = 0;
-  itemEl.querySelectorAll('.eg-fila').forEach(fila => {
+  itemEl.querySelectorAll('.linea-talle').forEach(fila => {
     const t = fila.dataset.talle;
     const n = it.cant[t] || 0;
     const p = it.precios[t];
@@ -643,8 +646,15 @@ function agregarTalleOtro(itemEl) {
   const t = inp.value.trim().toUpperCase().replace(/[.\s/]/g, '');
   if (!t) return;
   if (!it.extras.includes(t)) it.extras.push(t);
-  it.cant[t] = it.cant[t] || 1;
+  activarTalle(it, modeloPorId(it.modeloId), t);
   renderCartel();
+  enfocarMonto(itemEl.dataset.idx, t);
+}
+
+// Si el talle no tiene monto sugerido, se pone el cursor ahí (en el celular abre el teclado de números).
+function enfocarMonto(idx, t) {
+  const inp = document.querySelector(`.item[data-idx="${idx}"] .linea-talle[data-talle="${CSS.escape(t)}"] [data-precio]`);
+  if (inp && !inp.value) inp.focus();
 }
 
 $('#reg-items').addEventListener('click', e => {
@@ -660,19 +670,30 @@ $('#reg-items').addEventListener('click', e => {
     renderCartel();
     return;
   }
-  if (e.target.closest('[data-otro]')) { agregarTalleOtro(itemEl); return; }
+
+  const chip = e.target.closest('[data-chip]');
+  if (chip && !chip.disabled) {
+    const t = chip.dataset.chip;
+    if (it.activos.includes(t)) desactivarTalle(it, t); else activarTalle(it, m, t);
+    vibrar();
+    renderCartel();
+    if (it.activos.includes(t)) enfocarMonto(idx, t);
+    return;
+  }
 
   const paso = e.target.closest('[data-paso]');
   if (paso && !paso.disabled) {
-    const celda = paso.closest('.it-talle');
-    const t = celda.dataset.talle;
+    const linea = paso.closest('.linea-talle');
+    const t = linea.dataset.talle;
     const hay = m.talles?.[t] || 0;
     let n = (it.cant[t] || 0) + Number(paso.dataset.paso);
     n = Math.max(0, esEgreso() ? Math.min(n, hay) : n);
-    it.cant[t] = n;
-    celda.querySelector('[data-cant]').value = n || '';
     vibrar();
-    actualizarCelda(celda, it, m);
+    // Bajar a 0 con el "−" saca el talle de la carga.
+    if (!n) { desactivarTalle(it, t); renderCartel(); return; }
+    it.cant[t] = n;
+    linea.querySelector('[data-cant]').value = n;
+    actualizarCelda(linea, it, m);
     actualizarSubtotal(idx);
     actualizarResumen();
   }
@@ -684,7 +705,8 @@ $('#reg-items').addEventListener('input', e => {
   const idx = Number(itemEl.dataset.idx);
   const it = reg.items[idx];
   const m = modeloPorId(it.modeloId);
-  const celda = e.target.closest('.it-talle');
+  const celda = e.target.closest('.linea-talle');
+  if (!celda) return;
   const t = celda.dataset.talle;
 
   if (e.target.matches('[data-cant]')) {

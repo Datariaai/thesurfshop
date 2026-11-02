@@ -1,6 +1,6 @@
 {
-  "name": "Stock · thesurfshop.ar",
-  "short_name": "Stock TSS",
+  "name": "ERP · thesurfshop.ar",
+  "short_name": "ERP TSS",
   "start_url": "stock.html",
   "display": "standalone",
   "background_color": "#061a30",
