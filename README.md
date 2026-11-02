@@ -13,20 +13,19 @@ Es HTML, CSS y JS sin compilar: no hay que instalar nada. Se publica tal cual (V
 
 ## Sistema de stock (`stock.html`)
 
-- Lista de modelos con el stock de cada talle. Se puede buscar y filtrar: con stock, poco stock y agotados.
-- Al tocar un modelo, cada talle tiene **−** (vendí uno) y **+** (entró uno).
-- Al tocar el número de un talle se cargan varias unidades de una: "Entraron", "Vendí" o "Hay en total" (corrige el número).
-- Después de cada operación aparece **Deshacer** durante 5 segundos.
-- No deja vender más de lo que hay.
-- Movimientos: el historial por día, con lo vendido y lo que entró hoy.
-- Crear, editar y borrar modelos (nombre, marca, color, precio, talles y foto).
-- En el celular se puede agregar a la pantalla de inicio y abre como una app.
+- **Panel a la izquierda** (en el celular se abre con ☰) con tres secciones: Stock, Altas y Bajas.
+- **Stock**: resumen (unidades, modelos, poco stock, agotados) y una tabla con cada modelo y la cantidad por talle. En el celular se ve como tarjetas. Se puede buscar y filtrar.
+- **Registrar alta / baja**: abre un cartel donde se elige 1) el modelo, 2) el talle, 3) la cantidad y 4) el motivo (alta: Compra, Devolución u Otro; baja: Venta, Falla / daño u Otro), con una nota opcional. Antes de confirmar muestra "hay X → quedan Y".
+- No deja dar de baja más de lo que hay. Los talles sin stock aparecen apagados en las bajas.
+- Después de cada registro aparece **Deshacer** durante 6 segundos.
+- **Altas / Bajas**: lo que entró o salió hoy, en los últimos 7 días y en el mes, más el historial por día.
+- Crear, editar y borrar modelos (nombre, marca, color, precio, talles y foto). Al crear uno se abre directo el alta para cargarle stock.
 - Si se corta la señal sigue funcionando, y sincroniza cuando vuelve.
 
 ### Datos (Firestore)
 
 - `modelos/{id}`: `nombre, marca, color, precio, fotos[], fotoData, orden, talles: { "32": 3, ... }`
-- `movimientos/{id}`: `modeloId, modelo, talle, delta, tipo (venta|ingreso|ajuste), fecha, quien`
+- `movimientos/{id}`: `modeloId, modelo, talle, delta, tipo (alta|baja), motivo, nota, fecha, quien`
 
 Las fotos nuevas se guardan achicadas (unos 60 KB) adentro del modelo, así no hace falta Firebase Storage (que es pago).
 

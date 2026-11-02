@@ -1,7 +1,7 @@
 // Capa de datos: misma interfaz para Firebase (real) y para el modo prueba (localStorage).
 //
 // modelos/{id}:     { nombre, marca, color, precio, fotos[], fotoData, orden, talles: { "32": 3, ... } }
-// movimientos/{id}: { modeloId, modelo, talle, delta, tipo: venta|ingreso|ajuste, fecha, quien }
+// movimientos/{id}: { modeloId, modelo, talle, delta, tipo: alta|baja, motivo, nota, fecha, quien }
 
 // Script común (sin módulos) para que funcione abriendo el HTML directo desde la carpeta.
 (function () {
@@ -34,7 +34,7 @@ const ordenarModelos = lista =>
 // ---------------------------------------------------------------- modo prueba
 
 function crearDemo() {
-  const CLAVE = 'tss-demo-v1';
+  const CLAVE = 'tss-demo-v2';
   const subsModelos = new Set();
   const subsMovs = new Set();
   const subsUsuario = new Set();
@@ -76,10 +76,11 @@ function crearDemo() {
       guardar(); subsUsuario.forEach(cb => cb(null));
     },
 
-    async mover(modelo, talle, delta, tipo) {
+    async mover(modelo, talle, delta, tipo, extra = {}) {
       const m = estado.modelos[modelo.id];
       m.talles[talle] = (m.talles[talle] || 0) + delta;
       const mov = { id: id(), modeloId: modelo.id, modelo: m.nombre, talle, delta, tipo,
+                    motivo: extra.motivo || '', nota: extra.nota || '',
                     fecha: Date.now(), quien: estado.usuario?.email || '' };
       estado.movs.unshift(mov);
       estado.movs = estado.movs.slice(0, 500);
@@ -165,12 +166,13 @@ async function crearFirebase() {
 
     // Sin await a propósito en el commit: la caché local actualiza la pantalla al instante
     // y Firebase sincroniza atrás (también si no hay señal en ese momento).
-    async mover(modelo, talle, delta, tipo) {
+    async mover(modelo, talle, delta, tipo, extra = {}) {
       const batch = writeBatch(db);
       const movRef = doc(colMovs);
       batch.update(doc(colModelos, modelo.id), new FieldPath('talles', talle), increment(delta));
       batch.set(movRef, {
         modeloId: modelo.id, modelo: modelo.nombre, talle, delta, tipo,
+        motivo: extra.motivo || '', nota: extra.nota || '',
         fecha: serverTimestamp(), quien: auth.currentUser?.email || '',
       });
       batch.commit().catch(e => dispatchEvent(new CustomEvent('tss-error', { detail: e })));
