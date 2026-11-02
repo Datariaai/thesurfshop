@@ -1,0 +1,188 @@
+<!doctype html>
+<html lang="es-AR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <!-- Sacar el noindex cuando la clienta apruebe la web y estén los precios. -->
+  <meta name="robots" content="noindex">
+  <meta name="theme-color" content="#f4ead7">
+  <title>thesurfshop.ar · Boardshorts vintage</title>
+  <meta name="description" content="Boardshorts vintage originales Billabong y Quiksilver. Elegí tu malla y pedila por WhatsApp.">
+  <meta property="og:title" content="thesurfshop.ar · Boardshorts vintage">
+  <meta property="og:description" content="Billabong y Quiksilver originales. Pedidos por WhatsApp.">
+  <meta property="og:image" content="img/og.jpg">
+  <link rel="icon" href="img/favicon.png">
+  <link rel="apple-touch-icon" href="img/icon-180.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:ital,wdth,wght@0,62..125,400..900;1,62..125,400..900&family=Space+Mono:wght@400;700&display=swap">
+  <link rel="stylesheet" href="css/marca.css">
+  <link rel="stylesheet" href="css/tienda.css">
+  <script defer src="js/catalogo-inicial.js"></script>
+  <script defer src="js/tienda-config.js"></script>
+  <script defer src="js/tienda.js"></script>
+</head>
+<body>
+
+  <header class="barra">
+    <nav class="filtros" aria-label="Marcas">
+      <button class="filtro" data-marca="" aria-pressed="true">Todas</button>
+      <button class="filtro" data-marca="Billabong" aria-pressed="false">Billabong</button>
+      <button class="filtro" data-marca="Quiksilver" aria-pressed="false">Quiksilver</button>
+    </nav>
+    <a href="./" class="marca" aria-label="thesurfshop.ar, inicio">
+      <img src="img/wordmark.webp" alt="thesurfshop.ar" width="1400" height="230">
+    </a>
+    <button class="boton-carrito" id="abrir-carrito" aria-haspopup="dialog">
+      Carrito <span id="carrito-cuenta">(0)</span>
+    </button>
+  </header>
+
+  <main>
+    <section class="escenario" id="escenario" aria-roledescription="carrusel" aria-label="Mallas en la percha">
+      <!-- La misma foto del mar que tiene el logo: las mallas cuelgan contra el cielo. -->
+      <div class="paisaje" aria-hidden="true">
+        <div class="foto-mar"></div>
+      </div>
+
+      <p class="rotulo"><span>En la percha</span> / <span>Vintage originales</span></p>
+
+      <svg class="barral" id="barral" aria-hidden="true" preserveAspectRatio="none">
+        <defs>
+          <linearGradient id="cromo" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0" stop-color="#ffffff"/>
+            <stop offset=".45" stop-color="#b9c2c9"/>
+            <stop offset=".55" stop-color="#8d979f"/>
+            <stop offset="1" stop-color="#dfe4e8"/>
+          </linearGradient>
+        </defs>
+        <path id="barral-sombra" fill="none" stroke="rgba(11,42,74,.08)" stroke-width="5" stroke-linecap="round"/>
+        <path id="barral-tubo" fill="none" stroke="url(#cromo)" stroke-width="5" stroke-linecap="round"/>
+      </svg>
+
+      <div class="perchas" id="perchas"></div>
+
+      <button class="flecha flecha-izq" id="anterior" aria-label="Malla anterior">
+        <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M15 5l-7 7 7 7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </button>
+      <button class="flecha flecha-der" id="siguiente" aria-label="Malla siguiente">
+        <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M9 5l7 7-7 7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </button>
+
+      <div class="etiqueta" id="etiqueta" aria-live="polite">
+        <p class="etiqueta-marca" id="etiqueta-marca"></p>
+        <h1 class="etiqueta-nombre titulo-racing" id="etiqueta-nombre"></h1>
+        <p class="etiqueta-precio" id="etiqueta-precio"></p>
+        <button class="boton-ver" id="ver-malla">Ver malla</button>
+      </div>
+
+      <!-- Panel de la malla elegida -->
+      <aside class="panel" id="panel" aria-label="Detalle de la malla" hidden>
+        <button class="cerrar" id="cerrar-panel" aria-label="Cerrar">
+          <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>
+        </button>
+        <p class="panel-rotulo" id="panel-rotulo"></p>
+        <h2 class="panel-nombre" id="panel-nombre"></h2>
+        <p class="panel-precio"><strong id="panel-precio"></strong> <span id="panel-precio-nota"></span></p>
+
+        <p class="panel-sub">Color <strong id="panel-color"></strong></p>
+        <div class="fotos" id="panel-fotos"></div>
+
+        <div class="panel-sub panel-sub-fila">
+          <span>Talle <strong id="panel-talle">—</strong></span>
+          <span class="nota-talle">Medida de cintura en pulgadas</span>
+        </div>
+        <div class="talles" id="talles" role="radiogroup" aria-label="Talle">
+          <span class="talles-perilla" id="talles-perilla" aria-hidden="true"></span>
+        </div>
+
+        <button class="boton-agregar" id="agregar" disabled>
+          <span id="agregar-texto">Elegí un talle</span>
+          <span id="agregar-precio"></span>
+        </button>
+
+        <details class="acordeon">
+          <summary>Detalles</summary>
+          <p>Boardshort vintage original <span id="panel-marca-detalle"></span>. Las fotos son de la malla real que te llevás: tocalas para verlas grandes.</p>
+        </details>
+        <details class="acordeon">
+          <summary>Cómo comprar</summary>
+          <p>Sumá las mallas al carrito y tocá <strong>Pedir por WhatsApp</strong>. Te llega el pedido armado y coordinamos el pago y el envío por ahí.</p>
+        </details>
+        <details class="acordeon">
+          <summary>Talles</summary>
+          <p>Los talles van por medida de cintura en pulgadas (32 = 81 cm aprox.). Si dudás entre dos, consultanos por WhatsApp.</p>
+        </details>
+      </aside>
+    </section>
+
+    <section class="pasos" aria-label="Cómo comprar">
+      <div class="paso"><span class="paso-num">01</span><h3>Elegí</h3><p>Pasá las mallas del perchero y tocá la que te guste.</p></div>
+      <div class="paso"><span class="paso-num">02</span><h3>Sumá al carrito</h3><p>Elegí el talle. Podés llevar varias.</p></div>
+      <div class="paso"><span class="paso-num">03</span><h3>Pedí por WhatsApp</h3><p>Te llega el pedido armado y coordinamos pago y envío.</p></div>
+    </section>
+  </main>
+
+  <footer class="pie">
+    <div class="cinta" aria-hidden="true">
+      <div class="cinta-texto">
+        <span>Venta de boardshorts ★ Envíos a todo el país 📦 ★ Consultas al md ★ Billabong ★ Quiksilver ★ Vintage original ★&nbsp;</span>
+        <span>Venta de boardshorts ★ Envíos a todo el país 📦 ★ Consultas al md ★ Billabong ★ Quiksilver ★ Vintage original ★&nbsp;</span>
+      </div>
+    </div>
+    <svg class="pie-ola" viewBox="0 0 1440 90" preserveAspectRatio="none" aria-hidden="true">
+      <path d="M0 50C120 20 240 20 360 45s240 40 360 10 240-45 360-20 240 40 360 15V90H0z" fill="#3fb8c9" opacity=".35"/>
+      <path d="M0 62C140 40 260 46 380 60s250 22 370 0 230-30 360-8 230 26 330 6V90H0z" fill="#0b2a4a"/>
+    </svg>
+    <div class="pie-mar mar">
+      <p class="titulo-racing pie-titulo">Envíos a todo<br>el país</p>
+      <p class="pie-texto">¿Dudas con el talle o el envío? Escribinos.</p>
+      <div class="pie-botones">
+        <a class="pie-boton pie-boton-wpp" id="link-whatsapp" target="_blank" rel="noopener">WhatsApp</a>
+        <a class="pie-boton" id="link-instagram" target="_blank" rel="noopener">@thesurfshop.ar</a>
+      </div>
+      <img class="pie-logo" src="img/logo.webp" alt="" width="120" height="120" loading="lazy">
+    </div>
+  </footer>
+
+  <!-- Carrito -->
+  <dialog class="carrito" id="carrito" aria-labelledby="carrito-titulo">
+    <div class="carrito-caja">
+      <header class="carrito-cabeza">
+        <h2 id="carrito-titulo">Carrito</h2>
+        <button class="cerrar" id="cerrar-carrito" aria-label="Cerrar carrito">
+          <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>
+        </button>
+      </header>
+      <ul class="carrito-lista" id="carrito-lista"></ul>
+      <p class="carrito-vacio" id="carrito-vacio">Todavía no sumaste ninguna malla.</p>
+      <form class="carrito-pie" id="form-pedido">
+        <div class="carrito-total"><span>Total</span><strong id="carrito-total">$0</strong></div>
+        <p class="carrito-nota" id="carrito-nota" hidden>Algunas mallas no tienen precio cargado: te lo confirmamos por WhatsApp.</p>
+        <label class="campo-pedido">
+          <span>Tu nombre (opcional)</span>
+          <input name="nombre" autocomplete="name" maxlength="60">
+        </label>
+        <label class="campo-pedido">
+          <span>Ciudad o barrio, para el envío (opcional)</span>
+          <input name="zona" autocomplete="address-level2" maxlength="80">
+        </label>
+        <button class="boton-whatsapp" id="pedir" type="submit">
+          <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path fill="currentColor" d="M12 2a10 10 0 0 0-8.6 15.1L2 22l5-1.3A10 10 0 1 0 12 2zm0 18.2a8.2 8.2 0 0 1-4.2-1.2l-.3-.2-3 .8.8-2.9-.2-.3A8.2 8.2 0 1 1 12 20.2zm4.5-6.1c-.2-.1-1.5-.7-1.7-.8-.2-.1-.4-.1-.6.1l-.8 1c-.1.2-.3.2-.5.1a6.7 6.7 0 0 1-3.3-2.9c-.3-.4.2-.4.7-1.4.1-.2 0-.3 0-.4l-.8-1.8c-.2-.5-.4-.4-.6-.4h-.5a1 1 0 0 0-.7.3 3 3 0 0 0-.9 2.2 5.2 5.2 0 0 0 1.1 2.7 11.8 11.8 0 0 0 4.5 4c1.7.7 2.3.8 3.2.6.5-.1 1.5-.6 1.7-1.2.2-.6.2-1.1.2-1.2-.1-.1-.3-.2-.5-.3z"/></svg>
+          Pedir por WhatsApp
+        </button>
+      </form>
+    </div>
+  </dialog>
+
+  <!-- Foto real ampliada -->
+  <dialog class="visor" id="visor" aria-label="Foto de la malla">
+    <button class="cerrar" id="cerrar-visor" aria-label="Cerrar foto">
+      <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>
+    </button>
+    <img id="visor-img" alt="">
+  </dialog>
+
+  <div class="aviso" id="aviso" role="status" hidden></div>
+</body>
+</html>

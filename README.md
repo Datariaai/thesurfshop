@@ -6,27 +6,32 @@ Cliente de Dataria. Venta de boardshorts vintage (Billabong, Quiksilver). Instag
 
 | Parte | Archivo | Estado |
 |---|---|---|
-| Sistema de stock | `stock.html` | Listo. Funciona en modo prueba hasta conectar Firebase |
-| Página pública | — | Pendiente (se hace después) |
+| ERP (stock, ingresos, egresos, ventas) | `stock.html` | Listo. Guarda en el navegador hasta conectar Firebase |
+| Tienda pública (catálogo en un perchero, carrito y pedido por WhatsApp) | `index.html` | Lista. WhatsApp y precios en `js/tienda-config.js` (faltan los precios) |
 
-Es HTML, CSS y JS sin compilar: no hay que instalar nada. Se publica tal cual (Vercel o Firebase Hosting).
+Es HTML, CSS y JS sin compilar: no hay que instalar nada. Está publicado con GitHub Pages desde la rama `sistema-stock`: https://datariaai.github.io/thesurfshop/ (cada push se publica solo). El estado y lo pendiente están en `.agents/PENDIENTES.md`.
 
 ## Sistema de stock (`stock.html`)
 
-- Lista de modelos con el stock de cada talle. Se puede buscar y filtrar: con stock, poco stock y agotados.
-- Al tocar un modelo, cada talle tiene **−** (vendí uno) y **+** (entró uno).
-- Al tocar el número de un talle se cargan varias unidades de una: "Entraron", "Vendí" o "Hay en total" (corrige el número).
-- Después de cada operación aparece **Deshacer** durante 5 segundos.
-- No deja vender más de lo que hay.
-- Movimientos: el historial por día, con lo vendido y lo que entró hoy.
-- Crear, editar y borrar modelos (nombre, marca, color, precio, talles y foto).
-- En el celular se puede agregar a la pantalla de inicio y abre como una app.
-- Si se corta la señal sigue funcionando, y sincroniza cuando vuelve.
+Panel a la izquierda (en el celular se abre con ☰) con cuatro módulos:
+
+- **Stock**: resumen (unidades, agotados, costo del stock y valor de venta) y una tabla con cada modelo, la cantidad por talle y el total. El encabezado queda fijo al bajar. En el celular se ve como tarjetas. Desde acá se crean y editan modelos.
+- **Ingresos**: entrada de mercadería. Cada talle lleva su costo por unidad (se sugiere el último costo de ese modelo).
+- **Egresos**: salida de mercadería. Cada egreso es una venta: cada talle lleva su precio por unidad (se sugiere el precio del modelo).
+- **Ventas**: se arma sola con los egresos. Muestra lo facturado, las unidades, la cantidad de ventas y el ticket promedio, y el detalle por modelo (unidades, talles vendidos, precio promedio, facturado y última venta). Se puede ver hoy, los últimos 7 días, este mes o todo.
+
+**Registrar un ingreso o egreso** (con el botón de arriba de cada módulo): 1) uno o varios modelos; en cada uno se tocan los talles y se abre una línea con cantidad y costo (o precio), 2) nota opcional.
+- En un ingreso se puede agregar un talle que el modelo no tenía, y crear un modelo nuevo sin salir del cartel.
+- En un egreso solo aparecen los talles con stock, y no deja sacar más de lo que hay.
+- Las cantidades y precios abren el teclado de números en el celular.
+- Después de registrar aparece **Deshacer** durante 7 segundos, que deshace la operación completa.
+
+Si se corta la señal sigue funcionando, y sincroniza cuando vuelve.
 
 ### Datos (Firestore)
 
-- `modelos/{id}`: `nombre, marca, color, precio, fotos[], fotoData, orden, talles: { "32": 3, ... }`
-- `movimientos/{id}`: `modeloId, modelo, talle, delta, tipo (venta|ingreso|ajuste), fecha, quien`
+- `modelos/{id}`: `nombre, marca, color, costo, precio, fotos[], fotoData, orden, talles: { "32": 3, ... }`
+- `movimientos/{id}`: `opId, modeloId, modelo, talle, delta, tipo (alta = ingreso | baja = egreso / venta), nota, costo (por unidad, ingresos), precio (por unidad, egresos), fecha, quien`. Cada renglón de una operación es un movimiento; todos comparten el `opId`.
 
 Las fotos nuevas se guardan achicadas (unos 60 KB) adentro del modelo, así no hace falta Firebase Storage (que es pago).
 
@@ -44,11 +49,9 @@ Los 15 modelos iniciales salen de las fotos que mandó el cliente (`js/catalogo-
 
 ## Probar en la compu
 
-```
-python -m http.server 5173
-```
+Abrir `stock.html` con doble clic. Mientras no esté conectado Firebase, se entra con el botón "Entrar" (sin usuario) y guarda solo en ese navegador. Con Firebase conectado, la entrada pide el email y la contraseña de la clienta.
 
-Y abrir http://localhost:5173/stock.html. Hace falta un servidor porque los módulos JS no andan abriendo el archivo con doble clic.
+Con Firebase conectado, el ingreso con usuario no funciona abriendo el archivo directo (Firebase solo acepta páginas publicadas). Para probarlo en la compu: `python -m http.server 5173` y abrir http://localhost:5173/stock.html.
 
 ## Material original
 

@@ -1,0 +1,12 @@
+{
+  "name": "ERP · thesurfshop.ar",
+  "short_name": "ERP TSS",
+  "start_url": "stock.html",
+  "display": "standalone",
+  "background_color": "#061a30",
+  "theme_color": "#061a30",
+  "icons": [
+    { "src": "img/icon-180.png", "sizes": "180x180", "type": "image/png" },
+    { "src": "img/logo.webp", "sizes": "512x512", "type": "image/webp", "purpose": "any" }
+  ]
+}
