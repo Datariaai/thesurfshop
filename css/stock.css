@@ -216,31 +216,30 @@ tr.agotado .col-total { color: var(--peligro); }
 
 .vacio { text-align: center; padding: 40px 0; color: var(--texto-suave); display: grid; gap: 14px; justify-items: center; }
 
-/* ---------- altas / bajas ---------- */
-.registrar-grande { margin: 18px 0 4px; }
-.registrar-grande .btn { width: 100%; min-height: 58px; font-size: 18px; }
-@media (min-width: 700px) { .registrar-grande .btn { width: auto; padding: 0 28px; } }
+/* ---------- ingresos / egresos ---------- */
 
 
 .dia { margin: 22px 0 8px; font-size: 13px; font-weight: 700; color: var(--texto-suave); text-transform: capitalize; }
-.ops { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
-.op { padding: 12px 14px; border-radius: var(--radio); background: var(--tarjeta); border-left: 4px solid var(--linea); }
+.ops { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.op { padding: 8px 12px; border-radius: 12px; background: var(--tarjeta); border-left: 3px solid var(--linea); }
 .op.alta { border-left-color: var(--amarillo); }
 .op.baja { border-left-color: var(--rosa); }
-.op-cab { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
-.op-motivo { font-weight: 800; }
-.op-total { font-weight: 900; font-style: italic; font-variant-numeric: tabular-nums; }
+.op-cab { display: flex; align-items: baseline; gap: 10px; font-size: 13px; min-width: 0; }
+.op-hora { color: var(--texto-suave); font-variant-numeric: tabular-nums; }
+.op-total { font-weight: 800; font-variant-numeric: tabular-nums; white-space: nowrap; }
 .op.alta .op-total { color: var(--amarillo); }
 .op.baja .op-total { color: var(--rosa); }
-.op-plata { font-weight: 800; color: var(--amarillo); font-variant-numeric: tabular-nums; }
-.op-hora { margin-left: auto; font-size: 13px; color: var(--texto-suave); font-variant-numeric: tabular-nums; }
-.op-lineas { list-style: none; margin: 8px 0 0; padding: 0; display: grid; gap: 6px; }
-.op-linea { display: grid; grid-template-columns: 34px 1fr auto; gap: 10px; align-items: center; font-size: 14px; }
-.op-linea img { width: 34px; height: 42px; object-fit: cover; border-radius: 6px; background: var(--abismo); }
-.op-linea span { color: var(--texto-suave); }
-.op-linea span b { color: var(--texto); }
-.op-linea em { font-style: normal; font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; }
-.op-nota { margin: 8px 0 0; font-size: 13px; color: var(--texto-suave); }
+.op-plata { font-weight: 800; color: var(--amarillo); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.op-nota { color: var(--texto-suave); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.op-lineas { list-style: none; margin: 4px 0 0; padding: 0; display: grid; gap: 1px; }
+.op-linea {
+  display: grid; grid-template-columns: 1fr 44px 36px; gap: 8px; align-items: baseline;
+  font-size: 14px; font-variant-numeric: tabular-nums;
+}
+.op.baja .op-linea { grid-template-columns: 1fr 44px 36px 84px; }
+.op-mod { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.op-talle, .op-cant { color: var(--texto-suave); text-align: right; }
+.op-precio { text-align: right; font-weight: 700; }
 
 /* ventas */
 .periodos { display: flex; gap: 8px; overflow-x: auto; scrollbar-width: none; margin: 0 -16px 14px; padding: 0 16px; }
@@ -278,7 +277,7 @@ tr.agotado .col-total { color: var(--peligro); }
 .cartel.baja .cartel-cabecera { border-top: 5px solid var(--rosa); }
 .cartel.baja .cartel-cabecera h2 { color: var(--rosa); }
 
-.cartel-cuerpo { flex: 0 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: 16px 20px; display: grid; gap: 20px; align-content: start; }
+.cartel-cuerpo { flex: 0 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: 14px 16px; display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; align-content: start; }
 .cartel-pie {
   padding: 12px 20px calc(16px + env(safe-area-inset-bottom)); border-top: 1px solid var(--linea);
   background: var(--oceano); display: grid; gap: 10px;
@@ -309,64 +308,68 @@ tr.agotado .col-total { color: var(--peligro); }
 .opcion-modelo b { display: block; font-size: 15px; }
 .opcion-modelo small { font-size: 12px; color: var(--texto-suave); }
 .opcion-total { font-size: 13px; font-weight: 700; color: var(--texto-suave); white-space: nowrap; }
-.btn-nuevo-modelo, .btn-agregar { width: 100%; margin-top: 8px; border-style: dashed; }
-
 /* renglones del cartel: un modelo con sus talles */
-.items { display: grid; gap: 12px; }
+.selector-cab { display: flex; gap: 8px; align-items: stretch; }
+.selector-cab .buscador { flex: 1; min-width: 0; }
+.btn-nuevo-modelo { min-height: 44px; padding: 0 14px; font-size: 14px; box-shadow: 3px 3px 0 var(--rosa); }
+.agregar-fila { display: flex; gap: 8px; margin-top: 10px; }
+.agregar-fila .btn { flex: 1; min-height: 42px; font-size: 14px; border-style: dashed; }
+.agregar-fila .btn-nuevo-modelo { box-shadow: none; }
+
+.items { display: grid; gap: 10px; }
 .items:empty { display: none; }
-.item { border-radius: 16px; background: var(--profundo); border: 1px solid var(--linea); padding: 12px; }
-.item-cab { display: grid; grid-template-columns: 40px 1fr auto; gap: 12px; align-items: center; }
-.item-cab img { width: 40px; height: 50px; object-fit: cover; border-radius: 8px; background: var(--abismo); }
-.item-cab b { display: block; font-size: 16px; }
+.item { border-radius: 14px; background: var(--profundo); border: 1px solid var(--linea); padding: 8px 10px 10px; }
+.item-cab { display: grid; grid-template-columns: 34px 1fr auto; gap: 10px; align-items: center; }
+.item-cab img { width: 34px; height: 42px; object-fit: cover; border-radius: 6px; background: var(--abismo); }
+.item-cab b { display: block; font-size: 15px; line-height: 1.2; }
 .item-cab small { font-size: 12px; color: var(--texto-suave); }
-.item-talles { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; margin-top: 12px; }
+.item-cab .btn-icono { width: 36px; height: 36px; }
+.item-talles { display: grid; grid-template-columns: repeat(auto-fill, minmax(132px, 1fr)); gap: 6px; margin-top: 8px; }
 .it-talle {
-  display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 8px;
-  padding: 6px 6px 6px 12px; border-radius: 12px; background: var(--oceano); border: 1.5px solid transparent;
+  display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 6px;
+  padding: 3px 3px 3px 10px; border-radius: 10px; background: var(--oceano); border: 1.5px solid transparent;
 }
 .it-talle.con { border-color: var(--amarillo); }
 .cartel.baja .it-talle.con { border-color: var(--rosa); }
-.it-talle.sin-stock { opacity: .35; }
-.it-t b { display: block; font-size: 20px; font-weight: 900; font-style: italic; line-height: 1; }
-.it-t small { font-size: 11px; color: var(--texto-suave); }
-.it-stepper { display: grid; grid-template-columns: 34px 40px 34px; align-items: center; }
+.it-t b { display: block; font-size: 17px; font-weight: 900; font-style: italic; line-height: 1; }
+.it-t small { font-size: 10px; color: var(--texto-suave); }
+.it-stepper { display: grid; grid-template-columns: 32px 34px 32px; align-items: center; }
 .it-stepper button {
-  height: 38px; border: 0; border-radius: 10px; font-size: 20px; font-weight: 900; line-height: 1;
+  height: 34px; border: 0; border-radius: 8px; font-size: 18px; font-weight: 900; line-height: 1;
   background: var(--tarjeta-2); color: var(--texto); touch-action: manipulation;
 }
 .it-stepper button:disabled { opacity: .3; }
 .it-stepper input {
-  width: 100%; height: 38px; text-align: center; border: 0; background: transparent;
-  font-size: 18px; font-weight: 900; font-variant-numeric: tabular-nums;
-  -moz-appearance: textfield; appearance: textfield;
+  width: 100%; height: 34px; padding: 0; text-align: center; border: 0; background: transparent;
+  font-size: 17px; font-weight: 900; font-variant-numeric: tabular-nums;
 }
-.it-stepper input::-webkit-inner-spin-button, .it-stepper input::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
 .it-stepper input:focus { outline: 2px solid var(--amarillo); border-radius: 8px; }
-.item-otro { display: flex; gap: 8px; margin-top: 10px; }
+
+/* egreso: una fila por talle con cantidad y precio */
+.eg-filas { display: grid; gap: 6px; margin-top: 8px; }
+.eg-fila { grid-template-columns: 44px auto minmax(0, 1fr) auto; }
+.eg-sub { min-width: 0; font-size: 13px; font-weight: 800; color: var(--amarillo); text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.eg-sub:empty { display: none; }
+.eg-fila:has(.eg-sub:empty) { grid-template-columns: 44px auto minmax(0, 1fr); }
+.moneda { position: relative; display: block; min-width: 0; }
+.moneda::before { content: '$'; position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: var(--texto-suave); font-weight: 700; font-size: 14px; }
+.moneda input {
+  width: 100%; height: 34px; padding: 0 8px 0 22px; border-radius: 8px;
+  border: 1.5px solid var(--linea); background: var(--abismo); font-size: 16px; font-weight: 700; font-variant-numeric: tabular-nums;
+}
+.moneda input:focus { border-color: var(--amarillo); outline: none; }
+.moneda input.falta { border-color: var(--peligro); }
+.item-total { margin-top: 8px; text-align: right; font-weight: 900; color: var(--amarillo); font-variant-numeric: tabular-nums; }
+.item-total:empty { display: none; }
+
+.item-otro { display: flex; gap: 6px; margin-top: 8px; }
 .item-otro input {
-  flex: 1; min-width: 0; min-height: 42px; padding: 0 12px; border-radius: 12px;
+  flex: 1; min-width: 0; min-height: 38px; padding: 0 12px; border-radius: 10px;
   border: 1.5px dashed var(--linea); background: transparent; font-size: 15px;
 }
-.item-otro .btn { min-height: 42px; font-size: 14px; }
-.item-precio { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--linea); }
-.item-precio label { display: flex; align-items: center; gap: 8px; font-size: 14px; font-weight: 600; color: var(--texto-suave); }
-.item-precio .moneda { position: relative; }
-.item-precio .moneda::before { content: '$'; position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--texto-suave); font-weight: 700; }
-.item-precio input {
-  width: 130px; min-height: 42px; padding: 0 12px 0 26px; border-radius: 12px;
-  border: 1.5px solid var(--linea); background: var(--abismo); font-size: 16px; font-weight: 700;
-}
-.item-precio input:focus { border-color: var(--amarillo); outline: none; }
-.item-precio input.falta { border-color: var(--peligro); }
-.item-subtotal { margin-left: auto; font-weight: 900; color: var(--amarillo); font-variant-numeric: tabular-nums; }
+.item-otro .btn { min-height: 38px; font-size: 14px; padding: 0 14px; }
 
 .paso h3 small { font-weight: 500; color: var(--texto-suave); }
-.opciones-motivo { display: flex; flex-wrap: wrap; gap: 8px; }
-.opcion-motivo {
-  min-height: 42px; padding: 0 16px; border-radius: 999px;
-  background: transparent; border: 1.5px solid var(--linea); color: var(--texto-suave); font-weight: 700; font-size: 14px;
-}
-.opcion-motivo[aria-checked="true"] { background: var(--espuma); border-color: var(--espuma); color: var(--abismo); }
 
 .resumen { margin: 0; text-align: center; color: var(--texto-suave); font-size: 15px; min-height: 1.4em; }
 .resumen b { color: var(--texto); }
@@ -420,3 +423,11 @@ tr.agotado .col-total { color: var(--peligro); }
   min-height: 40px; padding: 0 14px; border-radius: 10px;
 }
 .toast button[hidden] { display: none; }
+
+/* En pantallas anchas, las filas compactas no se estiran de punta a punta. */
+@media (min-width: 700px) {
+  .op-linea { grid-template-columns: minmax(140px, 280px) 50px 40px; justify-content: start; }
+  .op.baja .op-linea { grid-template-columns: minmax(140px, 280px) 50px 40px 100px; }
+  .eg-fila, .eg-fila:has(.eg-sub:empty) { grid-template-columns: 44px auto 180px auto; justify-content: start; }
+  .eg-sub { text-align: left; }
+}

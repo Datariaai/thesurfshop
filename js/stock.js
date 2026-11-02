@@ -19,12 +19,7 @@ const pesos = n => plata.format(n || 0);
 const entero = v => Math.max(0, Math.floor(Number(v) || 0));
 
 const TALLES_OPCIONES = ['26', '28', '30', '32', '34', '36', '38', '40', 'S', 'M', 'L', 'XL'];
-// tipo "alta" = ingreso de mercadería, "baja" = egreso. Las ventas son egresos con motivo "Venta".
-const MOTIVOS = {
-  alta: ['Compra a proveedor', 'Devolución de cliente', 'Ajuste de inventario'],
-  baja: ['Venta', 'Falla / daño', 'Ajuste de inventario'],
-};
-const VENTA = 'Venta';
+// tipo "alta" = ingreso de mercadería, "baja" = egreso. Cada egreso es una venta (lleva precio por talle).
 const ICONO_EDITAR = '<svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M4 20h4L19 9l-4-4L4 16zM14 6l4 4"/></svg>';
 const ICONO_CERRAR = '<svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></svg>';
 
@@ -187,7 +182,7 @@ function desde(p) {
 }
 
 const unidades = lista => lista.reduce((s, x) => s + Math.abs(x.delta), 0);
-const esMovVenta = x => x.tipo === 'baja' && x.motivo === VENTA;
+const esMovVenta = x => x.tipo === 'baja';
 const importe = x => Math.abs(x.delta) * (x.precio || 0);
 
 // Agrupa los movimientos de una misma operación (mismo opId), respetando el orden.
@@ -195,7 +190,7 @@ function agruparOps(lista) {
   const ops = new Map();
   for (const x of lista) {
     const clave = x.opId || x.id;
-    if (!ops.has(clave)) ops.set(clave, { id: clave, tipo: x.tipo, motivo: x.motivo, nota: x.nota, fecha: x.fecha, lineas: [] });
+    if (!ops.has(clave)) ops.set(clave, { id: clave, tipo: x.tipo, nota: x.nota, fecha: x.fecha, lineas: [] });
     ops.get(clave).lineas.push(x);
   }
   return [...ops.values()];
@@ -305,8 +300,6 @@ function renderOps(tipo) {
     <div class="kpi"><p>Este mes</p><b>${unidades(lista.filter(x => x.fecha >= desde('mes')))}</b></div>
     <div class="kpi"><p>Operaciones del mes</p><b>${ops.filter(o => o.fecha >= desde('mes')).length}</b></div>`;
 
-  $('#registrar-grande').innerHTML = tipo === 'alta' ? BOTON_INGRESO : BOTON_EGRESO;
-
   if (!ops.length) {
     $('#lista-movs').innerHTML = `<p class="vacio">Todavía no hay ${tipo === 'alta' ? 'ingresos' : 'egresos'} registrados.</p>`;
     return;
@@ -321,26 +314,25 @@ function renderOps(tipo) {
       diaActual = dia;
     }
     const u = unidades(op.lineas);
-    const venta = op.lineas.some(esMovVenta);
+    const egreso = tipo === 'baja';
     const total = op.lineas.reduce((s, x) => s + importe(x), 0);
     const lineas = op.lineas.map(x => {
-      const m = modeloPorId(x.modeloId);
       const n = Math.abs(x.delta);
       return `<li class="op-linea">
-        <img src="${esc(m ? fotoPrincipal(m) : 'img/logo.webp')}" alt="" loading="lazy" width="34" height="42">
-        <span><b>${esc(x.modelo)}</b> · talle ${esc(x.talle)}</span>
-        <em>×${n}${venta && x.precio ? ` · ${pesos(n * x.precio)}` : ''}</em>
+        <span class="op-mod">${esc(x.modelo)}</span>
+        <span class="op-talle">T${esc(x.talle)}</span>
+        <span class="op-cant">×${n}</span>
+        ${egreso ? `<span class="op-precio">${x.precio != null ? pesos(n * x.precio) : '—'}</span>` : ''}
       </li>`;
     }).join('');
     html += `<li class="op ${esc(op.tipo)}">
       <div class="op-cab">
-        <span class="op-motivo">${esc(op.motivo || (tipo === 'alta' ? 'Ingreso' : 'Egreso'))}</span>
-        <span class="op-total">${tipo === 'alta' ? '+' : '−'}${u} ${u === 1 ? 'unidad' : 'unidades'}</span>
-        ${venta && total ? `<span class="op-plata">${pesos(total)}</span>` : ''}
         <span class="op-hora">${formatoHora.format(op.fecha)}</span>
+        <span class="op-total">${egreso ? '−' : '+'}${u} ${u === 1 ? 'unidad' : 'unidades'}</span>
+        ${egreso && total ? `<span class="op-plata">${pesos(total)}</span>` : ''}
+        ${op.nota ? `<span class="op-nota">${esc(op.nota)}</span>` : ''}
       </div>
       <ul class="op-lineas">${lineas}</ul>
-      ${op.nota ? `<p class="op-nota">${esc(op.nota)}</p>` : ''}
     </li>`;
   }
   $('#lista-movs').innerHTML = html + '</ul>';
@@ -375,7 +367,7 @@ function renderVentas() {
   if (!filas.length) {
     $('#tabla-ventas').innerHTML = '';
     $('.tabla-ventas-env').hidden = true;
-    $('#tarjetas-ventas').innerHTML = '<li class="vacio"><p>No hay ventas en este período. Las ventas se cargan desde <b>Egresos</b> con el motivo "Venta".</p></li>';
+    $('#tarjetas-ventas').innerHTML = '<li class="vacio"><p>No hay ventas en este período. Las ventas se cargan desde <b>Egresos</b>.</p></li>';
     $('#tarjetas-ventas').style.display = 'grid';
     return;
   }
@@ -425,22 +417,26 @@ document.querySelector('.periodos').addEventListener('click', e => {
 });
 
 // ---------------------------------------------------------------- cartel: registrar ingreso / egreso
-// Un registro tiene uno o varios modelos (renglones); cada uno con cantidades por talle.
-// En una venta, cada renglón lleva precio unitario.
+// Un registro tiene uno o varios modelos (renglones), con cantidades por talle.
+// En un egreso (venta) cada talle lleva su propio precio por unidad.
 
 const cartel = $('#cartel');
 let reg = null;
 
-const esVenta = () => reg?.tipo === 'baja' && reg.motivo === VENTA;
+const esEgreso = () => reg?.tipo === 'baja';
+const soloDigitos = v => String(v ?? '').replace(/\D/g, '');
+// type="text" + inputmode="numeric" abre el teclado de números en el celular (iPhone y Android).
+const NUMERICO = 'type="text" inputmode="numeric" pattern="[0-9]*" autocomplete="off"';
 
 function abrirRegistro(tipo, modeloId = null) {
-  reg = { tipo, motivo: MOTIVOS[tipo][0], items: [], buscando: true };
+  reg = { tipo, items: [], buscando: true };
   cartel.classList.toggle('alta', tipo === 'alta');
   cartel.classList.toggle('baja', tipo === 'baja');
   $('#cartel-titulo').textContent = tipo === 'alta' ? 'Registrar ingreso' : 'Registrar egreso';
   $('#reg-buscar').value = '';
   $('#reg-nota').value = '';
-  $('#reg-nuevo-modelo').hidden = tipo !== 'alta';
+  $('#reg-nota').placeholder = tipo === 'alta' ? 'Proveedor, observaciones, etc.' : 'Cliente, envío, forma de pago, etc.';
+  document.querySelectorAll('[data-nuevo-modelo]').forEach(b => { b.hidden = tipo !== 'alta'; });
   if (modeloId) agregarItem(modeloId); else renderCartel();
   cartel.showModal();
   cartel.querySelector('.cartel-cuerpo').scrollTop = 0;
@@ -448,22 +444,16 @@ function abrirRegistro(tipo, modeloId = null) {
 }
 
 function agregarItem(id) {
-  if (!reg.items.some(it => it.modeloId === id)) {
-    const m = modeloPorId(id);
-    reg.items.push({ modeloId: id, cant: {}, extras: [], precio: m?.precio ? String(m.precio) : '' });
-  }
+  if (!reg.items.some(it => it.modeloId === id)) reg.items.push({ modeloId: id, cant: {}, precios: {}, extras: [] });
   reg.buscando = false;
   renderCartel();
 }
 
 function renderCartel() {
   if (!reg) return;
-  $('#reg-motivos').innerHTML = MOTIVOS[reg.tipo].map(x =>
-    `<button type="button" class="opcion-motivo" role="radio" data-motivo="${esc(x)}" aria-checked="${reg.motivo === x}">${esc(x)}</button>`
-  ).join('');
   renderItems();
   $('#reg-selector').hidden = !reg.buscando;
-  $('#reg-agregar').hidden = reg.buscando || !reg.items.length;
+  $('#reg-agregar-fila').hidden = reg.buscando || !reg.items.length;
   if (reg.buscando) renderOpcionesModelo();
   actualizarResumen();
 }
@@ -476,50 +466,58 @@ function refrescarCartel() {
   renderCartel();
 }
 
-function tallesItem(it, m) {
-  return ordenarTalles([...new Set([...Object.keys(m.talles || {}), ...it.extras])]);
+const precioSugerido = m => (m?.precio ? String(m.precio) : '');
+
+function stepper(t, n, sinStock, tope) {
+  return `<span class="it-stepper">
+    <button type="button" data-paso="-1" aria-label="Uno menos del talle ${esc(t)}" ${n <= 0 ? 'disabled' : ''}>−</button>
+    <input ${NUMERICO} data-cant value="${n || ''}" placeholder="0" aria-label="Cantidad del talle ${esc(t)}" ${sinStock ? 'disabled' : ''}>
+    <button type="button" data-paso="1" aria-label="Uno más del talle ${esc(t)}" ${sinStock || tope ? 'disabled' : ''}>+</button>
+  </span>`;
 }
 
 function renderItems() {
   $('#reg-items').innerHTML = reg.items.map((it, idx) => {
     const m = modeloPorId(it.modeloId);
     if (!m) return '';
-    const celdas = tallesItem(it, m).map(t => {
-      const hay = m.talles?.[t] || 0;
-      const n = it.cant[t] || 0;
-      const nuevo = !(t in (m.talles || {}));
-      const sinStock = reg.tipo === 'baja' && hay <= 0;
-      const tope = reg.tipo === 'baja' && n >= hay;
-      return `<div class="it-talle ${n ? 'con' : ''} ${sinStock ? 'sin-stock' : ''}" data-talle="${esc(t)}">
-        <span class="it-t"><b>${esc(t)}</b><small>${nuevo ? 'nuevo' : `hay ${hay}`}</small></span>
-        <span class="it-stepper">
-          <button type="button" data-paso="-1" aria-label="Uno menos del talle ${esc(t)}" ${n <= 0 ? 'disabled' : ''}>−</button>
-          <input type="number" inputmode="numeric" min="0" step="1" data-cant value="${n || ''}" placeholder="0"
-            aria-label="Cantidad del talle ${esc(t)}" ${sinStock ? 'disabled' : ''}>
-          <button type="button" data-paso="1" aria-label="Uno más del talle ${esc(t)}" ${sinStock || tope ? 'disabled' : ''}>+</button>
-        </span>
-      </div>`;
-    }).join('');
-    const otro = reg.tipo === 'alta' ? `
-      <div class="item-otro">
-        <input type="text" maxlength="6" placeholder="Otro talle (ej: 40)" data-otro-input aria-label="Agregar otro talle a ${esc(m.nombre)}">
-        <button type="button" class="btn btn-borde" data-otro>+ Agregar talle</button>
-      </div>` : '';
-    const precio = esVenta() ? `
-      <div class="item-precio">
-        <label>Precio por unidad
-          <span class="moneda"><input type="number" inputmode="numeric" min="0" step="1" data-precio value="${esc(it.precio)}" placeholder="0" aria-label="Precio por unidad de ${esc(m.nombre)}"></span>
-        </label>
-        <span class="item-subtotal" data-subtotal></span>
-      </div>` : '';
+    let cuerpo;
+    if (esEgreso()) {
+      // Egreso: solo los talles con stock, cada uno con cantidad y precio.
+      const filas = ordenarTalles(Object.keys(m.talles || {})).filter(t => (m.talles[t] || 0) > 0).map(t => {
+        const hay = m.talles[t];
+        const n = it.cant[t] || 0;
+        return `<div class="it-talle eg-fila ${n ? 'con' : ''}" data-talle="${esc(t)}">
+          <span class="it-t"><b>${esc(t)}</b><small>hay ${hay}</small></span>
+          ${stepper(t, n, false, n >= hay)}
+          <span class="moneda"><input ${NUMERICO} data-precio value="${esc(it.precios[t] ?? '')}" placeholder="Precio"
+            aria-label="Precio por unidad del talle ${esc(t)}"></span>
+          <span class="eg-sub" data-sub></span>
+        </div>`;
+      }).join('');
+      cuerpo = `<div class="eg-filas">${filas || '<p class="vacio">Este modelo no tiene stock.</p>'}</div>
+        <div class="item-total" data-subtotal></div>`;
+    } else {
+      const celdas = ordenarTalles([...new Set([...Object.keys(m.talles || {}), ...it.extras])]).map(t => {
+        const n = it.cant[t] || 0;
+        const nuevo = !(t in (m.talles || {}));
+        return `<div class="it-talle ${n ? 'con' : ''}" data-talle="${esc(t)}">
+          <span class="it-t"><b>${esc(t)}</b><small>${nuevo ? 'nuevo' : `hay ${m.talles[t] || 0}`}</small></span>
+          ${stepper(t, n, false, false)}
+        </div>`;
+      }).join('');
+      cuerpo = `<div class="item-talles">${celdas}</div>
+        <div class="item-otro">
+          <input type="text" maxlength="6" placeholder="Otro talle (ej: 40)" data-otro-input aria-label="Agregar otro talle a ${esc(m.nombre)}">
+          <button type="button" class="btn btn-borde" data-otro>+ Talle</button>
+        </div>`;
+    }
     return `<div class="item" data-idx="${idx}">
       <div class="item-cab">
-        <img src="${esc(fotoPrincipal(m))}" alt="" width="40" height="50">
+        <img src="${esc(fotoPrincipal(m))}" alt="" width="34" height="42">
         <span><b>${esc(m.nombre)}</b><small>${esc(m.marca || '')} · ${totalModelo(m)} en stock</small></span>
         <button type="button" class="btn-icono" data-quitar aria-label="Quitar ${esc(m.nombre)}">${ICONO_CERRAR}</button>
       </div>
-      <div class="item-talles">${celdas}</div>
-      ${otro}${precio}
+      ${cuerpo}
     </div>`;
   }).join('');
   reg.items.forEach((it, idx) => actualizarSubtotal(idx));
@@ -531,7 +529,7 @@ function renderOpcionesModelo() {
   const lista = modelos.filter(m => !ya.has(m.id) && (!q || normalizar(`${m.nombre} ${m.marca} ${m.color}`).includes(q)));
   $('#reg-opciones').innerHTML = lista.map(m => {
     const t = totalModelo(m);
-    const sinStock = reg.tipo === 'baja' && t === 0;
+    const sinStock = esEgreso() && t === 0;
     return `<li><button type="button" class="opcion-modelo" data-id="${esc(m.id)}" ${sinStock ? 'disabled' : ''}>
       <img src="${esc(fotoPrincipal(m))}" alt="" loading="lazy" width="40" height="50">
       <span><b>${esc(m.nombre)}</b><small>${esc([m.marca, m.color].filter(Boolean).join(' · '))}</small></span>
@@ -546,15 +544,30 @@ function actualizarCelda(celda, it, m) {
   const hay = m.talles?.[t] || 0;
   celda.classList.toggle('con', n > 0);
   celda.querySelector('[data-paso="-1"]').disabled = n <= 0;
-  celda.querySelector('[data-paso="1"]').disabled = reg.tipo === 'baja' && n >= hay;
+  celda.querySelector('[data-paso="1"]').disabled = esEgreso() && n >= hay;
+  // Al vender un talle por primera vez se sugiere el precio del modelo.
+  const precio = celda.querySelector('[data-precio]');
+  if (precio && n > 0 && (it.precios[t] ?? '') === '' && precioSugerido(m)) {
+    it.precios[t] = precioSugerido(m);
+    precio.value = it.precios[t];
+  }
 }
 
 function actualizarSubtotal(idx) {
-  const el = document.querySelector(`.item[data-idx="${idx}"] [data-subtotal]`);
-  if (!el) return;
+  const itemEl = document.querySelector(`.item[data-idx="${idx}"]`);
+  if (!itemEl || !esEgreso()) return;
   const it = reg.items[idx];
-  const n = Object.values(it.cant).reduce((s, x) => s + x, 0);
-  el.textContent = n && entero(it.precio) ? `${n} × ${pesos(entero(it.precio))} = ${pesos(n * entero(it.precio))}` : '';
+  let total = 0;
+  itemEl.querySelectorAll('.eg-fila').forEach(fila => {
+    const t = fila.dataset.talle;
+    const n = it.cant[t] || 0;
+    const p = it.precios[t];
+    const sub = n && p ? n * entero(p) : 0;
+    total += sub;
+    fila.querySelector('[data-sub]').textContent = n && p ? pesos(sub) : '';
+    fila.querySelector('[data-precio]').classList.toggle('falta', n > 0 && (p ?? '') === '');
+  });
+  itemEl.querySelector('[data-subtotal]').textContent = total ? `Subtotal ${pesos(total)}` : '';
 }
 
 // Junta los renglones con cantidad y valida. Devuelve { lineas, unidades, total, error }.
@@ -564,16 +577,17 @@ function armarRegistro() {
   for (const it of reg.items) {
     const m = modeloPorId(it.modeloId);
     if (!m) continue;
-    const precio = esVenta() ? entero(it.precio) : null;
-    let delModelo = 0;
     for (const [t, n] of Object.entries(it.cant)) {
       if (!n) continue;
       const hay = m.talles?.[t] || 0;
-      if (reg.tipo === 'baja' && n > hay) error ||= `${m.nombre} talle ${t}: hay ${hay}, no alcanza para ${n}.`;
-      lineas.push({ modelo: m, talle: t, delta: reg.tipo === 'alta' ? n : -n, precio });
-      delModelo += n;
+      let precio = null;
+      if (esEgreso()) {
+        if (n > hay) error ||= `${m.nombre} talle ${t}: hay ${hay}, no alcanza para ${n}.`;
+        if ((it.precios[t] ?? '') === '') error ||= `Falta el precio de ${m.nombre} talle ${t}.`;
+        precio = entero(it.precios[t]);
+      }
+      lineas.push({ modelo: m, talle: t, delta: esEgreso() ? -n : n, precio });
     }
-    if (esVenta() && delModelo && !precio) error ||= `Falta el precio de ${m.nombre}.`;
   }
   const u = lineas.reduce((s, l) => s + Math.abs(l.delta), 0);
   const total = lineas.reduce((s, l) => s + Math.abs(l.delta) * (l.precio || 0), 0);
@@ -583,27 +597,19 @@ function armarRegistro() {
 function actualizarResumen() {
   const r = $('#reg-resumen');
   const ok = $('#reg-ok');
-  const ingreso = reg.tipo === 'alta';
   const { lineas, unidades: u, total, error } = armarRegistro();
   r.classList.toggle('error', !!error);
   ok.disabled = true;
-  ok.textContent = ingreso ? 'Registrar ingreso' : esVenta() ? 'Registrar venta' : 'Registrar egreso';
-
-  document.querySelectorAll('[data-precio]').forEach(inp => {
-    const it = reg.items[inp.closest('.item').dataset.idx];
-    const lleva = Object.values(it.cant).some(Boolean);
-    inp.classList.toggle('falta', lleva && !entero(it.precio));
-  });
+  ok.textContent = esEgreso() ? 'Registrar egreso' : 'Registrar ingreso';
 
   if (!reg.items.length) { r.textContent = 'Elegí un modelo.'; return; }
   if (!u) { r.textContent = 'Poné la cantidad en al menos un talle.'; return; }
   if (error) { r.textContent = error; return; }
 
   const modelosN = new Set(lineas.map(l => l.modelo.id)).size;
-  const signo = ingreso ? '+' : '−';
   r.innerHTML = `<b>${u}</b> ${u === 1 ? 'unidad' : 'unidades'} en <b>${modelosN}</b> ${modelosN === 1 ? 'modelo' : 'modelos'}`
-    + (esVenta() ? ` · Total <b>${pesos(total)}</b>` : '');
-  ok.textContent += esVenta() ? ` (${pesos(total)})` : ` (${signo}${u})`;
+    + (esEgreso() ? ` · Total <b>${pesos(total)}</b>` : '');
+  ok.textContent += esEgreso() ? ` (${pesos(total)})` : ` (+${u})`;
   ok.disabled = false;
 }
 
@@ -624,13 +630,8 @@ $('#reg-agregar').addEventListener('click', () => {
   $('#reg-selector').scrollIntoView({ block: 'nearest' });
 });
 
-$('#reg-nuevo-modelo').addEventListener('click', () => abrirForm(null));
-
-$('#reg-motivos').addEventListener('click', e => {
-  const b = e.target.closest('.opcion-motivo');
-  if (!b) return;
-  reg.motivo = b.dataset.motivo;
-  renderCartel();
+cartel.addEventListener('click', e => {
+  if (e.target.closest('[data-nuevo-modelo]')) abrirForm(null);
 });
 
 $('#reg-opciones').addEventListener('click', e => {
@@ -669,7 +670,7 @@ $('#reg-items').addEventListener('click', e => {
     const t = celda.dataset.talle;
     const hay = m.talles?.[t] || 0;
     let n = (it.cant[t] || 0) + Number(paso.dataset.paso);
-    n = Math.max(0, reg.tipo === 'baja' ? Math.min(n, hay) : n);
+    n = Math.max(0, esEgreso() ? Math.min(n, hay) : n);
     it.cant[t] = n;
     celda.querySelector('[data-cant]').value = n || '';
     vibrar();
@@ -681,21 +682,23 @@ $('#reg-items').addEventListener('click', e => {
 
 $('#reg-items').addEventListener('input', e => {
   const itemEl = e.target.closest('.item');
-  if (!itemEl) return;
+  if (!itemEl || e.target.matches('[data-otro-input]')) return;
   const idx = Number(itemEl.dataset.idx);
   const it = reg.items[idx];
   const m = modeloPorId(it.modeloId);
+  const celda = e.target.closest('.it-talle');
+  const t = celda.dataset.talle;
 
   if (e.target.matches('[data-cant]')) {
-    const celda = e.target.closest('.it-talle');
-    const t = celda.dataset.talle;
     const hay = m.talles?.[t] || 0;
-    let n = entero(e.target.value);
-    if (reg.tipo === 'baja' && n > hay) { n = hay; e.target.value = n || ''; }
+    let n = entero(soloDigitos(e.target.value));
+    if (esEgreso() && n > hay) n = hay;
+    e.target.value = n || '';
     it.cant[t] = n;
     actualizarCelda(celda, it, m);
   } else if (e.target.matches('[data-precio]')) {
-    it.precio = e.target.value;
+    e.target.value = soloDigitos(e.target.value);
+    it.precios[t] = e.target.value;
   }
   actualizarSubtotal(idx);
   actualizarResumen();
@@ -716,16 +719,13 @@ $('#form-registro').addEventListener('submit', async e => {
   e.preventDefault();
   const { lineas, unidades: u, total, error } = armarRegistro();
   if (!u || error) return;
-  const { tipo, motivo } = reg;
-  const venta = esVenta();
+  const tipo = reg.tipo;
   const nota = $('#reg-nota').value.trim();
   cartel.close();
   vibrar();
-  const ids = await datos.registrar({ tipo, motivo, nota, lineas });
-  const texto = tipo === 'alta' ? `Ingreso registrado: +${u} ${u === 1 ? 'unidad' : 'unidades'}`
-    : venta ? `Venta registrada: ${u} ${u === 1 ? 'unidad' : 'unidades'} · ${pesos(total)}`
-    : `Egreso registrado: −${u} ${u === 1 ? 'unidad' : 'unidades'}`;
-  toast(texto, { deshacer: ids });
+  const ids = await datos.registrar({ tipo, nota, lineas });
+  const unid = `${u} ${u === 1 ? 'unidad' : 'unidades'}`;
+  toast(tipo === 'alta' ? `Ingreso registrado: +${unid}` : `Egreso registrado: ${unid} · ${pesos(total)}`, { deshacer: ids });
 });
 
 cartel.addEventListener('close', () => { reg = null; });

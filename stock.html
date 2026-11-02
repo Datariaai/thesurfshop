@@ -129,11 +129,10 @@
         <!-- Ingresos / Egresos (misma estructura) -->
         <section id="vista-movs" class="vista" hidden>
           <div class="kpis" id="kpis-movs"></div>
-          <div class="registrar-grande" id="registrar-grande"></div>
           <div id="lista-movs"></div>
         </section>
 
-        <!-- Ventas: se arma con los egresos de motivo "Venta" -->
+        <!-- Ventas: se arma sola con los egresos (cada egreso es una venta) -->
         <section id="vista-ventas" class="vista" hidden>
           <div class="periodos" role="tablist" aria-label="Período">
             <button class="chip" data-periodo="hoy" role="tab" aria-selected="false">Hoy</button>
@@ -164,26 +163,26 @@
 
       <div class="cartel-cuerpo">
         <section class="paso">
-          <h3><span>1</span> Motivo</h3>
-          <div class="opciones-motivo" id="reg-motivos" role="radiogroup" aria-label="Motivo"></div>
-        </section>
-
-        <section class="paso">
-          <h3><span>2</span> Modelos y talles</h3>
+          <h3><span>1</span> Modelos y talles</h3>
           <div class="items" id="reg-items"></div>
           <div id="reg-selector" class="selector">
-            <div class="buscador">
-              <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><circle cx="11" cy="11" r="7" fill="none" stroke="currentColor" stroke-width="2"/><path d="m20 20-3.5-3.5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
-              <input type="search" id="reg-buscar" placeholder="Buscar modelo" autocomplete="off" aria-label="Buscar modelo">
+            <div class="selector-cab">
+              <div class="buscador">
+                <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><circle cx="11" cy="11" r="7" fill="none" stroke="currentColor" stroke-width="2"/><path d="m20 20-3.5-3.5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+                <input type="search" id="reg-buscar" placeholder="Buscar modelo" autocomplete="off" aria-label="Buscar modelo">
+              </div>
+              <button type="button" class="btn btn-amarillo btn-nuevo-modelo" data-nuevo-modelo>+ Modelo nuevo</button>
             </div>
             <ul class="opciones-modelo" id="reg-opciones" aria-label="Modelos"></ul>
-            <button type="button" class="btn btn-borde btn-nuevo-modelo" id="reg-nuevo-modelo">+ Modelo nuevo</button>
           </div>
-          <button type="button" class="btn btn-borde btn-agregar" id="reg-agregar" hidden>+ Agregar otro modelo</button>
+          <div class="agregar-fila" id="reg-agregar-fila" hidden>
+            <button type="button" class="btn btn-borde" id="reg-agregar">+ Agregar otro modelo</button>
+            <button type="button" class="btn btn-borde btn-nuevo-modelo" data-nuevo-modelo>+ Modelo nuevo</button>
+          </div>
         </section>
 
         <section class="paso">
-          <h3><span>3</span> Nota <small>(opcional)</small></h3>
+          <h3><span>2</span> Nota <small>(opcional)</small></h3>
           <input type="text" id="reg-nota" class="nota" maxlength="120" placeholder="Cliente, proveedor, envío, etc." aria-label="Nota">
         </section>
       </div>
