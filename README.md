@@ -30,7 +30,7 @@ Si se corta la señal sigue funcionando, y sincroniza cuando vuelve.
 
 ### Datos (Firestore)
 
-- `modelos/{id}`: `nombre, marca, color, precio, fotos[], fotoData, orden, talles: { "32": 3, ... }`
+- `modelos/{id}`: `nombre, marca, color, costo, precio, fotos[], fotoData, orden, talles: { "32": 3, ... }`
 - `movimientos/{id}`: `opId, modeloId, modelo, talle, delta, tipo (alta = ingreso | baja = egreso / venta), nota, costo (por unidad, ingresos), precio (por unidad, egresos), fecha, quien`. Cada renglón de una operación es un movimiento; todos comparten el `opId`.
 
 Las fotos nuevas se guardan achicadas (unos 60 KB) adentro del modelo, así no hace falta Firebase Storage (que es pago).
