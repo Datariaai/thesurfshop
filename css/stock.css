@@ -80,10 +80,6 @@ body { background: var(--profundo); min-height: 100dvh; }
 .nav-item.activo .nav-num { color: var(--amarillo); }
 
 .panel-pie { margin-top: auto; display: grid; gap: 10px; justify-items: start; }
-.panel-prueba {
-  margin: 0; padding: 8px 12px; border-radius: 10px; font-size: 12px;
-  background: rgba(255, 242, 58, .1); border: 1px solid rgba(255, 242, 58, .35); color: var(--amarillo);
-}
 .panel-usuario { margin: 0; font-size: 13px; color: var(--texto-suave); word-break: break-all; }
 
 .contenido { min-width: 0; }
@@ -233,10 +229,9 @@ tr.agotado .col-total { color: var(--peligro); }
 .op-nota { color: var(--texto-suave); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
 .op-lineas { list-style: none; margin: 4px 0 0; padding: 0; display: grid; gap: 1px; }
 .op-linea {
-  display: grid; grid-template-columns: 1fr 44px 36px; gap: 8px; align-items: baseline;
+  display: grid; grid-template-columns: 1fr 44px 36px 84px; gap: 8px; align-items: baseline;
   font-size: 14px; font-variant-numeric: tabular-nums;
 }
-.op.baja .op-linea { grid-template-columns: 1fr 44px 36px 84px; }
 .op-mod { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .op-talle, .op-cant { color: var(--texto-suave); text-align: right; }
 .op-precio { text-align: right; font-weight: 700; }
@@ -387,7 +382,7 @@ tr.agotado .col-total { color: var(--peligro); }
   overflow: hidden; cursor: pointer; font-weight: 700;
 }
 .hf-foto img { width: 100%; height: 100%; object-fit: cover; }
-.dos { display: grid; grid-template-columns: 1.4fr 1fr; gap: 10px; }
+.dos { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 .talles-elegir { display: flex; flex-wrap: wrap; gap: 8px; }
 .talles-elegir label { position: relative; }
 .talles-elegir input { position: absolute; opacity: 0; }
@@ -426,8 +421,7 @@ tr.agotado .col-total { color: var(--peligro); }
 
 /* En pantallas anchas, las filas compactas no se estiran de punta a punta. */
 @media (min-width: 700px) {
-  .op-linea { grid-template-columns: minmax(140px, 280px) 50px 40px; justify-content: start; }
-  .op.baja .op-linea { grid-template-columns: minmax(140px, 280px) 50px 40px 100px; }
+  .op-linea { grid-template-columns: minmax(140px, 280px) 50px 40px 100px; justify-content: start; }
   .eg-fila, .eg-fila:has(.eg-sub:empty) { grid-template-columns: 44px auto 180px auto; justify-content: start; }
   .eg-sub { text-align: left; }
 }

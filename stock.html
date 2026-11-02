@@ -46,7 +46,6 @@
         <p class="login-error" id="login-error" role="alert"></p>
         <button class="btn btn-amarillo btn-grande" type="submit">Entrar</button>
       </form>
-      <button id="btn-entrar-prueba" class="btn btn-amarillo btn-grande" type="button" hidden>Entrar (modo prueba)</button>
       <p class="login-nota" id="login-nota"></p>
     </div>
   </section>
@@ -87,7 +86,6 @@
       </nav>
 
       <div class="panel-pie">
-        <p class="panel-prueba" id="aviso-prueba" hidden>Modo prueba: se guarda solo en este navegador.</p>
         <p class="panel-usuario" id="panel-usuario"></p>
         <button class="btn btn-borde btn-chico" id="btn-salir" type="button">Cerrar sesión</button>
       </div>
@@ -212,9 +210,10 @@
         </label>
 
         <label class="campo"><span>Nombre del modelo *</span><input name="nombre" maxlength="60" placeholder="Ej: Pinstripe"></label>
+        <label class="campo"><span>Marca</span><input name="marca" list="marcas" maxlength="40" placeholder="Billabong"></label>
         <div class="dos">
-          <label class="campo"><span>Marca</span><input name="marca" list="marcas" maxlength="40" placeholder="Billabong"></label>
-          <label class="campo"><span>Precio</span><input name="precio" type="number" inputmode="numeric" min="0" step="1" placeholder="$"></label>
+          <label class="campo"><span>Costo</span><input name="costo" type="text" inputmode="numeric" pattern="[0-9]*" autocomplete="off" placeholder="$"></label>
+          <label class="campo"><span>Precio de venta</span><input name="precio" type="text" inputmode="numeric" pattern="[0-9]*" autocomplete="off" placeholder="$"></label>
         </div>
         <datalist id="marcas">
           <option value="Billabong"><option value="Quiksilver"><option value="Rip Curl"><option value="O'Neill"><option value="Volcom"><option value="Hurley"><option value="Oakley">

@@ -15,8 +15,8 @@ Es HTML, CSS y JS sin compilar: no hay que instalar nada. Se publica tal cual (V
 
 Panel a la izquierda (en el celular se abre con ☰) con cuatro módulos:
 
-- **Stock**: resumen (unidades, modelos, agotados, valor del stock) y una tabla con cada modelo y la cantidad por talle. El encabezado queda fijo al bajar. En el celular se ve como tarjetas. Desde acá se crean y editan modelos.
-- **Ingresos**: entrada de mercadería.
+- **Stock**: resumen (unidades, agotados, costo del stock y valor de venta) y una tabla con cada modelo y la cantidad por talle. El encabezado queda fijo al bajar. En el celular se ve como tarjetas. Desde acá se crean y editan modelos.
+- **Ingresos**: entrada de mercadería. Cada talle lleva su costo por unidad (se sugiere el último costo de ese modelo).
 - **Egresos**: salida de mercadería. Cada egreso es una venta: cada talle lleva su precio por unidad (se sugiere el precio del modelo).
 - **Ventas**: se arma sola con los egresos. Muestra lo facturado, las unidades, la cantidad de ventas y el ticket promedio, y el detalle por modelo (unidades, talles vendidos, precio promedio, facturado y última venta). Se puede ver hoy, los últimos 7 días, este mes o todo.
 
@@ -31,7 +31,7 @@ Si se corta la señal sigue funcionando, y sincroniza cuando vuelve.
 ### Datos (Firestore)
 
 - `modelos/{id}`: `nombre, marca, color, precio, fotos[], fotoData, orden, talles: { "32": 3, ... }`
-- `movimientos/{id}`: `opId, modeloId, modelo, talle, delta, tipo (alta = ingreso | baja = egreso / venta), nota, precio (por unidad, solo egresos), fecha, quien`. Cada renglón de una operación es un movimiento; todos comparten el `opId`.
+- `movimientos/{id}`: `opId, modeloId, modelo, talle, delta, tipo (alta = ingreso | baja = egreso / venta), nota, costo (por unidad, ingresos), precio (por unidad, egresos), fecha, quien`. Cada renglón de una operación es un movimiento; todos comparten el `opId`.
 
 Las fotos nuevas se guardan achicadas (unos 60 KB) adentro del modelo, así no hace falta Firebase Storage (que es pago).
 
@@ -49,7 +49,7 @@ Los 15 modelos iniciales salen de las fotos que mandó el cliente (`js/catalogo-
 
 ## Probar en la compu
 
-Abrir `stock.html` con doble clic: funciona en modo prueba.
+Abrir `stock.html` con doble clic. Mientras no esté conectado Firebase, entra con cualquier email y contraseña y guarda solo en ese navegador.
 
 Con Firebase conectado, el ingreso con usuario no funciona abriendo el archivo directo (Firebase solo acepta páginas publicadas). Para probarlo en la compu: `python -m http.server 5173` y abrir http://localhost:5173/stock.html.
 

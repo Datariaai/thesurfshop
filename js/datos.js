@@ -1,8 +1,8 @@
-// Capa de datos: misma interfaz para Firebase (real) y para el modo prueba (localStorage).
+// Capa de datos: misma interfaz para Firebase (real) y para el modo local (localStorage), que se usa mientras no esté Firebase.
 //
 // modelos/{id}:     { nombre, marca, color, precio, fotos[], fotoData, orden, talles: { "32": 3, ... } }
-// movimientos/{id}: { opId, modeloId, modelo, talle, delta, tipo: alta|baja, motivo, nota, precio, fecha, quien }
-//   tipo alta = ingreso de mercadería, baja = egreso. Las ventas son egresos con motivo "Venta" y precio unitario.
+// movimientos/{id}: { opId, modeloId, modelo, talle, delta, tipo: alta|baja, nota, precio, costo, fecha, quien }
+//   tipo alta = ingreso de mercadería (lleva costo por unidad), baja = egreso / venta (lleva precio por unidad).
 
 // Script común (sin módulos) para que funcione abriendo el HTML directo desde la carpeta.
 (function () {
@@ -32,7 +32,7 @@ const fotoPrincipal = m => m.fotoData || (m.fotos && m.fotos[0]) || 'img/logo.we
 const ordenarModelos = lista =>
   lista.sort((a, b) => (a.orden ?? 999) - (b.orden ?? 999) || a.nombre.localeCompare(b.nombre));
 
-// ---------------------------------------------------------------- modo prueba
+// ---------------------------------------------------------------- modo local (sin Firebase)
 
 function crearDemo() {
   const CLAVE = 'tss-demo-v3';
@@ -62,19 +62,24 @@ function crearDemo() {
   });
 
   const id = () => Math.random().toString(36).slice(2, 10);
+  const SESION = 'tss-sesion';
+  try { estado.usuario = JSON.parse(sessionStorage.getItem(SESION)); } catch { estado.usuario = null; }
 
   return {
     onModelos(cb) { subsModelos.add(cb); queueMicrotask(guardar); return () => subsModelos.delete(cb); },
     onMovimientos(cb) { subsMovs.add(cb); queueMicrotask(guardar); return () => subsMovs.delete(cb); },
     onUsuario(cb) { subsUsuario.add(cb); queueMicrotask(() => cb(estado.usuario)); return () => subsUsuario.delete(cb); },
 
-    async entrar(email) {
-      estado.usuario = { email: email || 'prueba@thesurfshop.ar' };
-      guardar(); subsUsuario.forEach(cb => cb(estado.usuario));
+    async entrar(email, clave) {
+      if (!email || !clave) throw Object.assign(new Error('Faltan datos'), { code: 'auth/invalid-credential' });
+      estado.usuario = { email };
+      try { sessionStorage.setItem(SESION, JSON.stringify(estado.usuario)); } catch { /* bloqueado */ }
+      subsUsuario.forEach(cb => cb(estado.usuario));
     },
     async salir() {
       estado.usuario = null;
-      guardar(); subsUsuario.forEach(cb => cb(null));
+      try { sessionStorage.removeItem(SESION); } catch { /* bloqueado */ }
+      subsUsuario.forEach(cb => cb(null));
     },
 
     // Una operación (ingreso o egreso) puede tener varios renglones: modelo + talle + cantidad (+ precio).
@@ -87,7 +92,7 @@ function crearDemo() {
         const m = estado.modelos[l.modelo.id];
         m.talles[l.talle] = (m.talles[l.talle] || 0) + l.delta;
         const mov = { id: id(), opId, modeloId: l.modelo.id, modelo: m.nombre, talle: l.talle, delta: l.delta,
-                      tipo, motivo, nota, precio: l.precio ?? null, fecha, quien: estado.usuario?.email || '' };
+                      tipo, motivo, nota, precio: l.precio ?? null, costo: l.costo ?? null, fecha, quien: estado.usuario?.email || '' };
         estado.movs.unshift(mov);
         ids.push(mov.id);
       }
@@ -185,7 +190,7 @@ async function crearFirebase() {
         batch.update(doc(colModelos, l.modelo.id), new FieldPath('talles', l.talle), increment(l.delta));
         batch.set(movRef, {
           opId, modeloId: l.modelo.id, modelo: l.modelo.nombre, talle: l.talle, delta: l.delta,
-          tipo, motivo, nota, precio: l.precio ?? null,
+          tipo, motivo, nota, precio: l.precio ?? null, costo: l.costo ?? null,
           fecha: serverTimestamp(), quien: auth.currentUser?.email || '',
         });
         ids.push(movRef.id);
