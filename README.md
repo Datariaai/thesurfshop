@@ -7,7 +7,7 @@ Cliente de Dataria. Venta de boardshorts vintage (Billabong, Quiksilver). Instag
 | Parte | Archivo | Estado |
 |---|---|---|
 | ERP (stock, ingresos, egresos, ventas) | `stock.html` | Listo. Guarda en el navegador hasta conectar Firebase |
-| Página pública | — | Pendiente (se hace después) |
+| Tienda pública (catálogo en un perchero, carrito y pedido por WhatsApp) | `index.html` | Lista. WhatsApp y precios en `js/tienda-config.js` (faltan los precios) |
 
 Es HTML, CSS y JS sin compilar: no hay que instalar nada. Está publicado con GitHub Pages desde la rama `sistema-stock`: https://datariaai.github.io/thesurfshop/ (cada push se publica solo). El estado y lo pendiente están en `.agents/PENDIENTES.md`.
 
