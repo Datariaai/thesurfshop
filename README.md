@@ -49,7 +49,7 @@ Los 15 modelos iniciales salen de las fotos que mandó el cliente (`js/catalogo-
 
 ## Probar en la compu
 
-Abrir `stock.html` con doble clic. Mientras no esté conectado Firebase, entra con cualquier email y contraseña y guarda solo en ese navegador.
+Abrir `stock.html` con doble clic. Mientras no esté conectado Firebase, se entra con el botón "Entrar" (sin usuario) y guarda solo en ese navegador. Con Firebase conectado, la entrada pide el email y la contraseña de la clienta.
 
 Con Firebase conectado, el ingreso con usuario no funciona abriendo el archivo directo (Firebase solo acepta páginas publicadas). Para probarlo en la compu: `python -m http.server 5173` y abrir http://localhost:5173/stock.html.
 

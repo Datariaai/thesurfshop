@@ -9,7 +9,7 @@
 const firebaseConfig = window.TSS_FIREBASE || {};
 const { CATALOGO_INICIAL } = window.TSS;
 
-const MODO_PRUEBA = !firebaseConfig.apiKey;
+const MODO_LOCAL = !firebaseConfig.apiKey;
 
 const ORDEN_LETRAS = ['XXS', 'XS', 'S', 'M', 'L', 'XL', 'XXL', 'XXXL', 'U'];
 
@@ -70,9 +70,8 @@ function crearDemo() {
     onMovimientos(cb) { subsMovs.add(cb); queueMicrotask(guardar); return () => subsMovs.delete(cb); },
     onUsuario(cb) { subsUsuario.add(cb); queueMicrotask(() => cb(estado.usuario)); return () => subsUsuario.delete(cb); },
 
-    async entrar(email, clave) {
-      if (!email || !clave) throw Object.assign(new Error('Faltan datos'), { code: 'auth/invalid-credential' });
-      estado.usuario = { email };
+    async entrar() {
+      estado.usuario = { email: '' };
       try { sessionStorage.setItem(SESION, JSON.stringify(estado.usuario)); } catch { /* bloqueado */ }
       subsUsuario.forEach(cb => cb(estado.usuario));
     },
@@ -234,7 +233,7 @@ async function crearFirebase() {
 }
 
 Object.assign(window.TSS, {
-  MODO_PRUEBA, ordenarTalles, totalModelo, fotoPrincipal,
-  datos: MODO_PRUEBA ? Promise.resolve(crearDemo()) : crearFirebase(),
+  MODO_LOCAL, ordenarTalles, totalModelo, fotoPrincipal,
+  datos: MODO_LOCAL ? Promise.resolve(crearDemo()) : crearFirebase(),
 });
 })();

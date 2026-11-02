@@ -1,5 +1,5 @@
 (async function () {
-const { ordenarTalles, totalModelo, fotoPrincipal, TALLES_BASE } = window.TSS;
+const { MODO_LOCAL, ordenarTalles, totalModelo, fotoPrincipal, TALLES_BASE } = window.TSS;
 let datos;
 try {
   datos = await window.TSS.datos;
@@ -42,7 +42,12 @@ function mostrarLogin() {
   desuscribir = [];
   $('#app').hidden = true;
   $('#login').hidden = false;
+  // Sin Firebase se entra con un solo botón; con Firebase se pide el usuario de la clienta.
+  $('#form-login').hidden = MODO_LOCAL;
+  $('#btn-entrar-directo').hidden = !MODO_LOCAL;
 }
+
+$('#btn-entrar-directo').addEventListener('click', () => datos.entrar());
 
 $('#form-login').addEventListener('submit', async e => {
   e.preventDefault();
@@ -71,6 +76,7 @@ function iniciarApp(usuario) {
   $('#login').hidden = true;
   $('#app').hidden = false;
   $('#panel-usuario').textContent = usuario.email || '';
+  $('#panel-usuario').hidden = !usuario.email;
   if (desuscribir.length) return;
   irA(vista);
   const alError = () => toast('No tenés permiso para ver el stock. Revisá el usuario.', { error: true });
@@ -914,8 +920,8 @@ function toast(texto, { error = false, deshacer = null } = {}) {
 }
 
 function cerrarToast() {
-  if (elToast.hidePopover && elToast.matches(':popover-open')) elToast.hidePopover();
-  else elToast.hidden = true;
+  if (!elToast.hidePopover) { elToast.hidden = true; return; }
+  if (elToast.matches(':popover-open')) elToast.hidePopover();
 }
 
 $('#toast-deshacer').addEventListener('click', async () => {
