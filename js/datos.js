@@ -1,7 +1,8 @@
 // Capa de datos: misma interfaz para Firebase (real) y para el modo prueba (localStorage).
 //
 // modelos/{id}:     { nombre, marca, color, precio, fotos[], fotoData, orden, talles: { "32": 3, ... } }
-// movimientos/{id}: { modeloId, modelo, talle, delta, tipo: alta|baja, motivo, nota, fecha, quien }
+// movimientos/{id}: { opId, modeloId, modelo, talle, delta, tipo: alta|baja, motivo, nota, precio, fecha, quien }
+//   tipo alta = ingreso de mercadería, baja = egreso. Las ventas son egresos con motivo "Venta" y precio unitario.
 
 // Script común (sin módulos) para que funcione abriendo el HTML directo desde la carpeta.
 (function () {
@@ -34,7 +35,7 @@ const ordenarModelos = lista =>
 // ---------------------------------------------------------------- modo prueba
 
 function crearDemo() {
-  const CLAVE = 'tss-demo-v2';
+  const CLAVE = 'tss-demo-v3';
   const subsModelos = new Set();
   const subsMovs = new Set();
   const subsUsuario = new Set();
@@ -76,24 +77,33 @@ function crearDemo() {
       guardar(); subsUsuario.forEach(cb => cb(null));
     },
 
-    async mover(modelo, talle, delta, tipo, extra = {}) {
-      const m = estado.modelos[modelo.id];
-      m.talles[talle] = (m.talles[talle] || 0) + delta;
-      const mov = { id: id(), modeloId: modelo.id, modelo: m.nombre, talle, delta, tipo,
-                    motivo: extra.motivo || '', nota: extra.nota || '',
-                    fecha: Date.now(), quien: estado.usuario?.email || '' };
-      estado.movs.unshift(mov);
-      estado.movs = estado.movs.slice(0, 500);
+    // Una operación (ingreso o egreso) puede tener varios renglones: modelo + talle + cantidad (+ precio).
+    // Todos quedan con el mismo opId y se deshacen juntos.
+    async registrar({ tipo, motivo = '', nota = '', lineas }) {
+      const opId = id();
+      const fecha = Date.now();
+      const ids = [];
+      for (const l of lineas) {
+        const m = estado.modelos[l.modelo.id];
+        m.talles[l.talle] = (m.talles[l.talle] || 0) + l.delta;
+        const mov = { id: id(), opId, modeloId: l.modelo.id, modelo: m.nombre, talle: l.talle, delta: l.delta,
+                      tipo, motivo, nota, precio: l.precio ?? null, fecha, quien: estado.usuario?.email || '' };
+        estado.movs.unshift(mov);
+        ids.push(mov.id);
+      }
+      estado.movs = estado.movs.slice(0, 3000);
       guardar();
-      return mov.id;
+      return ids;
     },
 
-    async deshacer(movId) {
-      const mov = estado.movs.find(x => x.id === movId);
-      if (!mov) return;
-      const m = estado.modelos[mov.modeloId];
-      if (m) m.talles[mov.talle] = (m.talles[mov.talle] || 0) - mov.delta;
-      estado.movs = estado.movs.filter(x => x.id !== movId);
+    async deshacer(ids) {
+      for (const movId of ids) {
+        const mov = estado.movs.find(x => x.id === movId);
+        if (!mov) continue;
+        const m = estado.modelos[mov.modeloId];
+        if (m) m.talles[mov.talle] = (m.talles[mov.talle] || 0) - mov.delta;
+        estado.movs = estado.movs.filter(x => x.id !== movId);
+      }
       guardar();
     },
 
@@ -151,7 +161,7 @@ async function crearFirebase() {
     },
 
     onMovimientos(cb, alError) {
-      const q = query(colMovs, orderBy('fecha', 'desc'), limit(400));
+      const q = query(colMovs, orderBy('fecha', 'desc'), limit(3000));
       return onSnapshot(q, snap => {
         cb(snap.docs.map(d => {
           const x = d.data({ serverTimestamps: 'estimate' });
@@ -166,27 +176,33 @@ async function crearFirebase() {
 
     // Sin await a propósito en el commit: la caché local actualiza la pantalla al instante
     // y Firebase sincroniza atrás (también si no hay señal en ese momento).
-    async mover(modelo, talle, delta, tipo, extra = {}) {
+    async registrar({ tipo, motivo = '', nota = '', lineas }) {
       const batch = writeBatch(db);
-      const movRef = doc(colMovs);
-      batch.update(doc(colModelos, modelo.id), new FieldPath('talles', talle), increment(delta));
-      batch.set(movRef, {
-        modeloId: modelo.id, modelo: modelo.nombre, talle, delta, tipo,
-        motivo: extra.motivo || '', nota: extra.nota || '',
-        fecha: serverTimestamp(), quien: auth.currentUser?.email || '',
-      });
+      const opId = doc(colMovs).id;
+      const ids = [];
+      for (const l of lineas) {
+        const movRef = doc(colMovs);
+        batch.update(doc(colModelos, l.modelo.id), new FieldPath('talles', l.talle), increment(l.delta));
+        batch.set(movRef, {
+          opId, modeloId: l.modelo.id, modelo: l.modelo.nombre, talle: l.talle, delta: l.delta,
+          tipo, motivo, nota, precio: l.precio ?? null,
+          fecha: serverTimestamp(), quien: auth.currentUser?.email || '',
+        });
+        ids.push(movRef.id);
+      }
       batch.commit().catch(e => dispatchEvent(new CustomEvent('tss-error', { detail: e })));
-      return movRef.id;
+      return ids;
     },
 
-    async deshacer(movId) {
-      const movRef = doc(colMovs, movId);
-      const snap = await getDoc(movRef);
-      if (!snap.exists()) return;
-      const mov = snap.data();
+    async deshacer(ids) {
+      const snaps = await Promise.all(ids.map(movId => getDoc(doc(colMovs, movId))));
       const batch = writeBatch(db);
-      batch.update(doc(colModelos, mov.modeloId), new FieldPath('talles', mov.talle), increment(-mov.delta));
-      batch.delete(movRef);
+      for (const snap of snaps) {
+        if (!snap.exists()) continue;
+        const mov = snap.data();
+        batch.update(doc(colModelos, mov.modeloId), new FieldPath('talles', mov.talle), increment(-mov.delta));
+        batch.delete(snap.ref);
+      }
       batch.commit().catch(e => dispatchEvent(new CustomEvent('tss-error', { detail: e })));
     },
 

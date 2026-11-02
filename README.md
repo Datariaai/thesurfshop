@@ -13,19 +13,24 @@ Es HTML, CSS y JS sin compilar: no hay que instalar nada. Se publica tal cual (V
 
 ## Sistema de stock (`stock.html`)
 
-- **Panel a la izquierda** (en el celular se abre con ☰) con tres secciones: Stock, Altas y Bajas.
-- **Stock**: resumen (unidades, modelos, poco stock, agotados) y una tabla con cada modelo y la cantidad por talle. En el celular se ve como tarjetas. Se puede buscar y filtrar.
-- **Registrar alta / baja**: abre un cartel donde se elige 1) el modelo, 2) el talle, 3) la cantidad y 4) el motivo (alta: Compra, Devolución u Otro; baja: Venta, Falla / daño u Otro), con una nota opcional. Antes de confirmar muestra "hay X → quedan Y".
-- No deja dar de baja más de lo que hay. Los talles sin stock aparecen apagados en las bajas.
-- Después de cada registro aparece **Deshacer** durante 6 segundos.
-- **Altas / Bajas**: lo que entró o salió hoy, en los últimos 7 días y en el mes, más el historial por día.
-- Crear, editar y borrar modelos (nombre, marca, color, precio, talles y foto). Al crear uno se abre directo el alta para cargarle stock.
-- Si se corta la señal sigue funcionando, y sincroniza cuando vuelve.
+Panel a la izquierda (en el celular se abre con ☰) con cuatro módulos:
+
+- **Stock**: resumen (unidades, modelos, agotados, valor del stock) y una tabla con cada modelo y la cantidad por talle. El encabezado queda fijo al bajar. En el celular se ve como tarjetas. Desde acá se crean y editan modelos.
+- **Ingresos**: entrada de mercadería. Motivos: Compra a proveedor, Devolución de cliente, Ajuste de inventario.
+- **Egresos**: salida de mercadería. Motivos: Venta, Falla / daño, Ajuste de inventario. En una venta, cada modelo lleva su precio por unidad.
+- **Ventas**: se arma solo con los egresos de motivo "Venta". Muestra lo facturado, las unidades, la cantidad de ventas y el ticket promedio, y el detalle por modelo (unidades, talles vendidos, precio promedio, facturado y última venta). Se puede ver hoy, los últimos 7 días, este mes o todo.
+
+**Registrar un ingreso o egreso** (solo desde su módulo): 1) motivo, 2) uno o varios modelos, cada uno con la cantidad de cada talle, 3) nota opcional.
+- En un ingreso se puede agregar un talle que el modelo no tenía, y crear un modelo nuevo sin salir del cartel.
+- En un egreso no deja sacar más de lo que hay, y los talles sin stock aparecen apagados.
+- Después de registrar aparece **Deshacer** durante 7 segundos, que deshace la operación completa.
+
+Si se corta la señal sigue funcionando, y sincroniza cuando vuelve.
 
 ### Datos (Firestore)
 
 - `modelos/{id}`: `nombre, marca, color, precio, fotos[], fotoData, orden, talles: { "32": 3, ... }`
-- `movimientos/{id}`: `modeloId, modelo, talle, delta, tipo (alta|baja), motivo, nota, fecha, quien`
+- `movimientos/{id}`: `opId, modeloId, modelo, talle, delta, tipo (alta = ingreso | baja = egreso), motivo, nota, precio, fecha, quien`. Cada renglón de una operación es un movimiento; todos comparten el `opId`.
 
 Las fotos nuevas se guardan achicadas (unos 60 KB) adentro del modelo, así no hace falta Firebase Storage (que es pago).
 

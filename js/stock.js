@@ -14,25 +14,31 @@ const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': 
 const normalizar = s => String(s ?? '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
 const vibrar = () => navigator.vibrate?.(12);
 const esCompu = () => matchMedia('(min-width: 700px)').matches;
+const plata = new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS', maximumFractionDigits: 0 });
+const pesos = n => plata.format(n || 0);
+const entero = v => Math.max(0, Math.floor(Number(v) || 0));
 
-const POCO_STOCK = 2;
 const TALLES_OPCIONES = ['26', '28', '30', '32', '34', '36', '38', '40', 'S', 'M', 'L', 'XL'];
+// tipo "alta" = ingreso de mercadería, "baja" = egreso. Las ventas son egresos con motivo "Venta".
 const MOTIVOS = {
-  alta: ['Compra', 'Devolución', 'Otro'],
-  baja: ['Venta', 'Falla / daño', 'Otro'],
+  alta: ['Compra a proveedor', 'Devolución de cliente', 'Ajuste de inventario'],
+  baja: ['Venta', 'Falla / daño', 'Ajuste de inventario'],
 };
+const VENTA = 'Venta';
 const ICONO_EDITAR = '<svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M4 20h4L19 9l-4-4L4 16zM14 6l4 4"/></svg>';
+const ICONO_CERRAR = '<svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></svg>';
 
 let modelos = [];
 let movs = [];
 let modelosCargados = false;
 let vista = 'stock';
-let filtro = 'todos';
 let busqueda = '';
-let filtroMovModelo = null;
+let periodo = 'mes';
 let desuscribir = [];
 
-// ---------------------------------------------------------------- ingreso
+const modeloPorId = id => modelos.find(m => m.id === id);
+
+// ---------------------------------------------------------------- ingreso al sistema
 
 datos.onUsuario(u => (u ? iniciarApp(u) : mostrarLogin()));
 
@@ -85,7 +91,7 @@ function iniciarApp(usuario) {
     modelos = lista;
     modelosCargados = true;
     renderVista();
-    if (cartel.open) renderCartel();
+    refrescarCartel();
   }, alError));
   desuscribir.push(datos.onMovimientos(lista => {
     movs = lista;
@@ -94,6 +100,11 @@ function iniciarApp(usuario) {
 }
 
 addEventListener('tss-error', () => toast('No se pudo guardar. Revisá la conexión.', { error: true }));
+
+// La altura de la cabecera fija se usa para que el encabezado de la tabla quede pegado debajo.
+new ResizeObserver(([e]) => {
+  document.documentElement.style.setProperty('--alto-cabecera', `${Math.round(e.target.offsetHeight)}px`);
+}).observe($('.cabecera'));
 
 // ---------------------------------------------------------------- panel y navegación
 
@@ -113,31 +124,31 @@ $('#btn-menu').addEventListener('click', abrirPanel);
 $('#panel-fondo').addEventListener('click', cerrarPanel);
 
 document.querySelectorAll('.nav-item').forEach(b => b.addEventListener('click', () => {
-  filtroMovModelo = null;
   irA(b.dataset.vista);
   cerrarPanel();
 }));
 
-// Cualquier botón con data-registrar abre el cartel (panel, cabecera, páginas de altas/bajas).
+// Botones con data-registrar (solo en los módulos de Ingresos y Egresos) abren el cartel.
 document.addEventListener('click', e => {
   const b = e.target.closest('[data-registrar]');
-  if (!b) return;
-  cerrarPanel();
-  abrirRegistro(b.dataset.registrar, b.dataset.id || null);
+  if (b) abrirRegistro(b.dataset.registrar);
 });
 
-const TITULOS = { stock: 'Stock', altas: 'Altas', bajas: 'Bajas' };
+const TITULOS = { stock: 'Stock', ingresos: 'Ingresos', egresos: 'Egresos', ventas: 'Ventas' };
+const BOTON_INGRESO = '<button class="btn btn-amarillo" type="button" data-registrar="alta">+ Registrar ingreso</button>';
+const BOTON_EGRESO = '<button class="btn btn-rosa" type="button" data-registrar="baja">− Registrar egreso</button>';
 
 function irA(v) {
   vista = v;
   document.querySelectorAll('.nav-item').forEach(b => b.classList.toggle('activo', b.dataset.vista === v));
   $('#cabecera-titulo').textContent = TITULOS[v];
   $('#vista-stock').hidden = v !== 'stock';
-  $('#vista-movs').hidden = v === 'stock';
+  $('#vista-movs').hidden = v !== 'ingresos' && v !== 'egresos';
+  $('#vista-ventas').hidden = v !== 'ventas';
   $('#cabecera-acciones').innerHTML =
-    v === 'stock' ? '<button class="btn btn-borde" type="button" id="btn-nuevo">+ Nuevo modelo</button>' :
-    v === 'altas' ? '<button class="btn btn-amarillo" type="button" data-registrar="alta">+ Alta</button>' :
-    '<button class="btn btn-rosa" type="button" data-registrar="baja">− Baja</button>';
+    v === 'stock' ? '<button class="btn btn-borde" type="button" id="btn-nuevo">+ Modelo nuevo</button>' :
+    v === 'ingresos' ? BOTON_INGRESO :
+    v === 'egresos' ? BOTON_EGRESO : '';
   renderVista();
   scrollTo(0, 0);
 }
@@ -149,13 +160,15 @@ $('#cabecera-acciones').addEventListener('click', e => {
 function renderVista() {
   renderNumerosPanel();
   if (vista === 'stock') renderStock();
-  else renderMovs(vista === 'altas' ? 'alta' : 'baja');
+  else if (vista === 'ventas') renderVentas();
+  else renderOps(vista === 'ingresos' ? 'alta' : 'baja');
 }
 
-// ---------------------------------------------------------------- fechas
+// ---------------------------------------------------------------- fechas y cuentas
 
 const formatoHora = new Intl.DateTimeFormat('es-AR', { hour: '2-digit', minute: '2-digit', hourCycle: 'h23' });
 const formatoDia = new Intl.DateTimeFormat('es-AR', { weekday: 'long', day: 'numeric', month: 'long' });
+const formatoCorto = new Intl.DateTimeFormat('es-AR', { day: 'numeric', month: 'short' });
 const claveDia = d => `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
 const esHoy = d => claveDia(d) === claveDia(new Date());
 
@@ -166,43 +179,55 @@ function nombreDia(d) {
   return formatoDia.format(d);
 }
 
+function desde(p) {
+  const d = new Date(); d.setHours(0, 0, 0, 0);
+  if (p === '7') d.setDate(d.getDate() - 6);
+  if (p === 'mes') d.setDate(1);
+  return p === 'todo' ? new Date(0) : d;
+}
+
 const unidades = lista => lista.reduce((s, x) => s + Math.abs(x.delta), 0);
+const esMovVenta = x => x.tipo === 'baja' && x.motivo === VENTA;
+const importe = x => Math.abs(x.delta) * (x.precio || 0);
+
+// Agrupa los movimientos de una misma operación (mismo opId), respetando el orden.
+function agruparOps(lista) {
+  const ops = new Map();
+  for (const x of lista) {
+    const clave = x.opId || x.id;
+    if (!ops.has(clave)) ops.set(clave, { id: clave, tipo: x.tipo, motivo: x.motivo, nota: x.nota, fecha: x.fecha, lineas: [] });
+    ops.get(clave).lineas.push(x);
+  }
+  return [...ops.values()];
+}
 
 function renderNumerosPanel() {
   $('#nav-num-stock').textContent = modelos.reduce((s, m) => s + totalModelo(m), 0);
   const deHoy = movs.filter(x => esHoy(x.fecha));
-  const altasHoy = unidades(deHoy.filter(x => x.tipo === 'alta'));
-  const bajasHoy = unidades(deHoy.filter(x => x.tipo === 'baja'));
-  $('#nav-num-altas').textContent = altasHoy ? `+${altasHoy} hoy` : '';
-  $('#nav-num-bajas').textContent = bajasHoy ? `−${bajasHoy} hoy` : '';
+  const ing = unidades(deHoy.filter(x => x.tipo === 'alta'));
+  const egr = unidades(deHoy.filter(x => x.tipo === 'baja'));
+  const ven = deHoy.filter(esMovVenta).reduce((s, x) => s + importe(x), 0);
+  $('#nav-num-ingresos').textContent = ing ? `+${ing} hoy` : '';
+  $('#nav-num-egresos').textContent = egr ? `−${egr} hoy` : '';
+  $('#nav-num-ventas').textContent = ven ? pesos(ven) : '';
 }
 
-// ---------------------------------------------------------------- vista stock
-
-const pasaFiltro = (m, f = filtro) => {
-  const t = totalModelo(m);
-  return f === 'con' ? t > 0 : f === 'sin' ? t === 0 : f === 'bajo' ? t > 0 && t <= POCO_STOCK : true;
-};
+// ---------------------------------------------------------------- módulo: stock
 
 function renderStock() {
   const total = modelos.reduce((s, m) => s + totalModelo(m), 0);
   const agotados = modelos.filter(m => totalModelo(m) === 0).length;
-  const poco = modelos.filter(m => pasaFiltro(m, 'bajo')).length;
+  const valor = modelos.reduce((s, m) => s + totalModelo(m) * (m.precio || 0), 0);
   $('#kpis-stock').innerHTML = `
     <div class="kpi amarillo"><p>Unidades en stock</p><b>${total}</b></div>
     <div class="kpi"><p>Modelos</p><b>${modelos.length}</b></div>
-    <div class="kpi"><p>Poco stock</p><b>${poco}</b></div>
-    <div class="kpi ${agotados ? 'alerta' : ''}"><p>Agotados</p><b>${agotados}</b></div>`;
+    <div class="kpi ${agotados ? 'alerta' : ''}"><p>Agotados</p><b>${agotados}</b></div>
+    <div class="kpi"><p>Valor del stock</p><b>${valor ? pesos(valor) : '—'}</b></div>`;
 
   const q = normalizar(busqueda);
-  const buscados = modelos.filter(m => !q || normalizar(`${m.nombre} ${m.marca} ${m.color}`).includes(q));
-  const visibles = buscados.filter(m => pasaFiltro(m));
+  const visibles = modelos.filter(m => !q || normalizar(`${m.nombre} ${m.marca} ${m.color}`).includes(q));
 
-  document.querySelectorAll('.filtros .chip').forEach(b => {
-    b.innerHTML = `${esc(b.dataset.nombre)} <span class="n">${buscados.filter(m => pasaFiltro(m, b.dataset.filtro)).length}</span>`;
-  });
-
-  // Tabla (compu): una columna por talle.
+  // Tabla (compu): una columna por talle, encabezado fijo.
   const talles = ordenarTalles([...new Set(modelos.flatMap(m => Object.keys(m.talles || {})))]);
   const filas = visibles.map(m => {
     const t = totalModelo(m);
@@ -219,17 +244,14 @@ function renderStock() {
       </div></td>
       ${celdas}
       <td class="col-total">${t}</td>
-      <td class="col-acciones"><div class="acciones-fila">
-        <button class="btn-mini alta" type="button" data-registrar="alta" data-id="${esc(m.id)}">+ Alta</button>
-        <button class="btn-mini baja" type="button" data-registrar="baja" data-id="${esc(m.id)}" ${t ? '' : 'disabled'}>− Baja</button>
-      </div></td>
+      <td>${m.precio ? pesos(m.precio) : '<span class="n-talle no">—</span>'}</td>
     </tr>`;
   }).join('');
   $('#tabla-stock').innerHTML = `<thead><tr>
       <th class="col-modelo" scope="col">Modelo</th>
       ${talles.map(t => `<th scope="col">${esc(t)}</th>`).join('')}
-      <th scope="col">Total</th><th scope="col"><span class="sr-only">Acciones</span></th>
-    </tr></thead><tbody>${filas}</tbody>`;
+      <th scope="col">Total</th><th scope="col">Precio</th>
+    </tr></thead><tbody>${filas || `<tr><td colspan="${talles.length + 3}" class="vacio">No hay modelos con ese nombre.</td></tr>`}</tbody>`;
 
   // Tarjetas (celular).
   $('#tarjetas-stock').innerHTML = visibles.map(m => {
@@ -241,44 +263,27 @@ function renderStock() {
     return `<li class="tarjeta ${t ? '' : 'agotado'}">
       <img src="${esc(fotoPrincipal(m))}" alt="" loading="lazy" width="60" height="76">
       <div class="tarjeta-info">
-        <p class="tarjeta-marca">${esc(m.marca)}</p>
+        <p class="tarjeta-marca">${esc(m.marca)}${m.precio ? ` · ${pesos(m.precio)}` : ''}</p>
         <p class="tarjeta-nombre">${esc(m.nombre)}</p>
         <div class="mini-talles">${mini}</div>
       </div>
-      <div class="tarjeta-total">${t}<small>${t === 1 ? 'unidad' : 'unid.'}</small></div>
-      <div class="tarjeta-acciones">
-        <button class="btn-mini alta" type="button" data-registrar="alta" data-id="${esc(m.id)}">+ Alta</button>
-        <button class="btn-mini baja" type="button" data-registrar="baja" data-id="${esc(m.id)}" ${t ? '' : 'disabled'}>− Baja</button>
+      <div class="tarjeta-lado">
+        <div class="tarjeta-total">${t}<small>${t === 1 ? 'unidad' : 'unid.'}</small></div>
         <button class="btn-editar" type="button" data-editar="${esc(m.id)}" aria-label="Editar ${esc(m.nombre)}">${ICONO_EDITAR}</button>
       </div>
     </li>`;
-  }).join('');
+  }).join('') || (modelos.length ? '<li class="vacio"><p>No hay modelos con ese nombre.</p></li>' : '');
 
   const sinNada = modelosCargados && modelos.length === 0;
   $('#vacio-modelos').hidden = !sinNada;
-  $('.tabla-envoltura').hidden = sinNada;
-  if (!sinNada && modelosCargados && !visibles.length) {
-    $('#tarjetas-stock').innerHTML = '<li class="vacio"><p>No hay modelos con ese filtro.</p></li>';
-    $('#tabla-stock tbody').innerHTML = `<tr><td colspan="${talles.length + 3}" class="vacio">No hay modelos con ese filtro.</td></tr>`;
-  }
+  $('#vista-stock .tabla-envoltura').hidden = sinNada;
 }
 
 $('#buscar').addEventListener('input', e => { busqueda = e.target.value; renderStock(); });
 
-document.querySelector('.filtros').addEventListener('click', e => {
-  const b = e.target.closest('.chip');
-  if (!b) return;
-  filtro = b.dataset.filtro;
-  document.querySelectorAll('.filtros .chip').forEach(x => {
-    x.classList.toggle('activo', x === b);
-    x.setAttribute('aria-selected', x === b);
-  });
-  renderStock();
-});
-
 $('#vista-stock').addEventListener('click', e => {
   const b = e.target.closest('[data-editar]');
-  if (b) abrirForm(modelos.find(m => m.id === b.dataset.editar));
+  if (b) abrirForm(modeloPorId(b.dataset.editar));
 });
 
 $('#btn-iniciales').addEventListener('click', async e => {
@@ -288,140 +293,242 @@ $('#btn-iniciales').addEventListener('click', async e => {
   e.target.disabled = false;
 });
 
-// ---------------------------------------------------------------- vistas altas / bajas
+// ---------------------------------------------------------------- módulos: ingresos / egresos
 
-function renderMovs(tipo) {
-  const delTipo = movs.filter(x => x.tipo === tipo);
-  const lista = filtroMovModelo ? delTipo.filter(x => x.modeloId === filtroMovModelo) : delTipo;
-
-  const hace7 = new Date(); hace7.setHours(0, 0, 0, 0); hace7.setDate(hace7.getDate() - 6);
-  const ahora = new Date();
-  const delMes = lista.filter(x => x.fecha.getMonth() === ahora.getMonth() && x.fecha.getFullYear() === ahora.getFullYear());
+function renderOps(tipo) {
+  const lista = movs.filter(x => x.tipo === tipo);
+  const ops = agruparOps(lista);
   const color = tipo === 'alta' ? 'amarillo' : 'rosa';
-  const palabra = tipo === 'alta' ? 'Entraron' : 'Salieron';
   $('#kpis-movs').innerHTML = `
-    <div class="kpi ${color}"><p>${palabra} hoy</p><b>${unidades(lista.filter(x => esHoy(x.fecha)))}</b></div>
-    <div class="kpi"><p>Últimos 7 días</p><b>${unidades(lista.filter(x => x.fecha >= hace7))}</b></div>
-    <div class="kpi"><p>Este mes</p><b>${unidades(delMes)}</b></div>
-    <div class="kpi"><p>Registros</p><b>${lista.length}</b></div>`;
+    <div class="kpi ${color}"><p>Unidades hoy</p><b>${unidades(lista.filter(x => esHoy(x.fecha)))}</b></div>
+    <div class="kpi"><p>Últimos 7 días</p><b>${unidades(lista.filter(x => x.fecha >= desde('7')))}</b></div>
+    <div class="kpi"><p>Este mes</p><b>${unidades(lista.filter(x => x.fecha >= desde('mes')))}</b></div>
+    <div class="kpi"><p>Operaciones del mes</p><b>${ops.filter(o => o.fecha >= desde('mes')).length}</b></div>`;
 
-  $('#registrar-grande').innerHTML = tipo === 'alta'
-    ? '<button class="btn btn-amarillo" type="button" data-registrar="alta">+ Registrar alta</button>'
-    : '<button class="btn btn-rosa" type="button" data-registrar="baja">− Registrar baja</button>';
+  $('#registrar-grande').innerHTML = tipo === 'alta' ? BOTON_INGRESO : BOTON_EGRESO;
 
-  const fm = $('#filtro-modelo');
-  fm.hidden = !filtroMovModelo;
-  if (filtroMovModelo) {
-    const m = modelos.find(x => x.id === filtroMovModelo);
-    fm.innerHTML = `<button class="chip" type="button" id="quitar-filtro" aria-label="Ver todos los modelos">${esc(m?.nombre || 'Modelo')} ✕</button>`;
-  }
-
-  if (!lista.length) {
-    $('#lista-movs').innerHTML = `<p class="vacio">Todavía no hay ${tipo === 'alta' ? 'altas' : 'bajas'} registradas.</p>`;
+  if (!ops.length) {
+    $('#lista-movs').innerHTML = `<p class="vacio">Todavía no hay ${tipo === 'alta' ? 'ingresos' : 'egresos'} registrados.</p>`;
     return;
   }
   let html = '';
   let diaActual = '';
-  for (const x of lista) {
-    const dia = claveDia(x.fecha);
+  for (const op of ops) {
+    const dia = claveDia(op.fecha);
     if (dia !== diaActual) {
       if (diaActual) html += '</ul>';
-      html += `<h3 class="dia">${esc(nombreDia(x.fecha))}</h3><ul class="movs">`;
+      html += `<h3 class="dia">${esc(nombreDia(op.fecha))}</h3><ul class="ops">`;
       diaActual = dia;
     }
-    const m = modelos.find(y => y.id === x.modeloId);
-    const detalle = [`Talle ${x.talle}`, x.motivo, x.nota].filter(Boolean).join(' · ');
-    html += `<li class="mov ${esc(x.tipo)}">
-      <img src="${esc(m ? fotoPrincipal(m) : 'img/logo.webp')}" alt="" loading="lazy" width="44" height="54">
-      <span class="mov-delta">${x.delta > 0 ? '+' : '−'}${Math.abs(x.delta)}</span>
-      <span class="mov-texto"><b>${esc(x.modelo)}</b><span>${esc(detalle)}</span></span>
-      <span class="mov-hora">${formatoHora.format(x.fecha)}</span>
+    const u = unidades(op.lineas);
+    const venta = op.lineas.some(esMovVenta);
+    const total = op.lineas.reduce((s, x) => s + importe(x), 0);
+    const lineas = op.lineas.map(x => {
+      const m = modeloPorId(x.modeloId);
+      const n = Math.abs(x.delta);
+      return `<li class="op-linea">
+        <img src="${esc(m ? fotoPrincipal(m) : 'img/logo.webp')}" alt="" loading="lazy" width="34" height="42">
+        <span><b>${esc(x.modelo)}</b> · talle ${esc(x.talle)}</span>
+        <em>×${n}${venta && x.precio ? ` · ${pesos(n * x.precio)}` : ''}</em>
+      </li>`;
+    }).join('');
+    html += `<li class="op ${esc(op.tipo)}">
+      <div class="op-cab">
+        <span class="op-motivo">${esc(op.motivo || (tipo === 'alta' ? 'Ingreso' : 'Egreso'))}</span>
+        <span class="op-total">${tipo === 'alta' ? '+' : '−'}${u} ${u === 1 ? 'unidad' : 'unidades'}</span>
+        ${venta && total ? `<span class="op-plata">${pesos(total)}</span>` : ''}
+        <span class="op-hora">${formatoHora.format(op.fecha)}</span>
+      </div>
+      <ul class="op-lineas">${lineas}</ul>
+      ${op.nota ? `<p class="op-nota">${esc(op.nota)}</p>` : ''}
     </li>`;
   }
   $('#lista-movs').innerHTML = html + '</ul>';
 }
 
-$('#filtro-modelo').addEventListener('click', e => {
-  if (!e.target.closest('#quitar-filtro')) return;
-  filtroMovModelo = null;
-  renderVista();
+// ---------------------------------------------------------------- módulo: ventas (se nutre de los egresos)
+
+function renderVentas() {
+  const ventas = movs.filter(x => esMovVenta(x) && x.fecha >= desde(periodo));
+  const facturado = ventas.reduce((s, x) => s + importe(x), 0);
+  const u = unidades(ventas);
+  const operaciones = agruparOps(ventas).length;
+  $('#kpis-ventas').innerHTML = `
+    <div class="kpi amarillo"><p>Facturado</p><b>${pesos(facturado)}</b></div>
+    <div class="kpi rosa"><p>Unidades vendidas</p><b>${u}</b></div>
+    <div class="kpi"><p>Ventas</p><b>${operaciones}</b></div>
+    <div class="kpi"><p>Ticket promedio</p><b>${operaciones ? pesos(facturado / operaciones) : '—'}</b></div>`;
+
+  const porModelo = new Map();
+  for (const x of ventas) {
+    if (!porModelo.has(x.modeloId)) porModelo.set(x.modeloId, { id: x.modeloId, nombre: x.modelo, unidades: 0, importe: 0, talles: {}, ultima: x.fecha });
+    const r = porModelo.get(x.modeloId);
+    const n = Math.abs(x.delta);
+    r.unidades += n;
+    r.importe += importe(x);
+    r.talles[x.talle] = (r.talles[x.talle] || 0) + n;
+    if (x.fecha > r.ultima) r.ultima = x.fecha;
+  }
+  const filas = [...porModelo.values()].sort((a, b) => b.importe - a.importe || b.unidades - a.unidades);
+  const max = Math.max(1, ...filas.map(r => r.importe));
+
+  if (!filas.length) {
+    $('#tabla-ventas').innerHTML = '';
+    $('.tabla-ventas-env').hidden = true;
+    $('#tarjetas-ventas').innerHTML = '<li class="vacio"><p>No hay ventas en este período. Las ventas se cargan desde <b>Egresos</b> con el motivo "Venta".</p></li>';
+    $('#tarjetas-ventas').style.display = 'grid';
+    return;
+  }
+  $('.tabla-ventas-env').hidden = false;
+  $('#tarjetas-ventas').style.display = '';
+
+  const tallesTxt = r => ordenarTalles(Object.keys(r.talles))
+    .map(t => `<span class="mini-talle hay">${esc(t)}·${r.talles[t]}</span>`).join('');
+  const foto = r => esc(modeloPorId(r.id) ? fotoPrincipal(modeloPorId(r.id)) : 'img/logo.webp');
+
+  $('#tabla-ventas').innerHTML = `<thead><tr>
+      <th class="col-modelo" scope="col">Modelo</th><th scope="col">Unidades</th><th scope="col">Talles vendidos</th>
+      <th scope="col">Precio prom.</th><th scope="col">Facturado</th><th scope="col">Última venta</th>
+    </tr></thead><tbody>${filas.map(r => `<tr>
+      <td class="col-modelo"><div class="celda-modelo">
+        <img src="${foto(r)}" alt="" loading="lazy" width="40" height="50">
+        <div><b>${esc(r.nombre)}</b><div class="barra-venta"><i style="width:${(r.importe / max) * 100}%"></i></div></div>
+      </div></td>
+      <td class="col-total">${r.unidades}</td>
+      <td><div class="talles-vendidos">${tallesTxt(r)}</div></td>
+      <td>${pesos(r.importe / r.unidades)}</td>
+      <td class="col-plata">${pesos(r.importe)}</td>
+      <td>${esHoy(r.ultima) ? 'Hoy' : formatoCorto.format(r.ultima)}</td>
+    </tr>`).join('')}</tbody>`;
+
+  $('#tarjetas-ventas').innerHTML = filas.map(r => `<li class="tarjeta">
+      <img src="${foto(r)}" alt="" loading="lazy" width="60" height="76">
+      <div class="tarjeta-info">
+        <p class="tarjeta-marca">${r.unidades} ${r.unidades === 1 ? 'unidad' : 'unidades'} · prom. ${pesos(r.importe / r.unidades)}</p>
+        <p class="tarjeta-nombre">${esc(r.nombre)}</p>
+        <div class="mini-talles">${tallesTxt(r)}</div>
+        <div class="barra-venta"><i style="width:${(r.importe / max) * 100}%"></i></div>
+      </div>
+      <div class="tarjeta-lado"><div class="tarjeta-total" style="font-size:17px">${pesos(r.importe)}</div></div>
+    </li>`).join('');
+}
+
+document.querySelector('.periodos').addEventListener('click', e => {
+  const b = e.target.closest('.chip');
+  if (!b) return;
+  periodo = b.dataset.periodo;
+  document.querySelectorAll('.periodos .chip').forEach(x => {
+    x.classList.toggle('activo', x === b);
+    x.setAttribute('aria-selected', x === b);
+  });
+  renderVentas();
 });
 
-// ---------------------------------------------------------------- cartel: registrar alta / baja
+// ---------------------------------------------------------------- cartel: registrar ingreso / egreso
+// Un registro tiene uno o varios modelos (renglones); cada uno con cantidades por talle.
+// En una venta, cada renglón lleva precio unitario.
 
 const cartel = $('#cartel');
 let reg = null;
 
-function abrirRegistro(tipo, modeloId) {
-  reg = { tipo, modeloId: null, talle: null, cantidad: 1, motivo: MOTIVOS[tipo][0] };
+const esVenta = () => reg?.tipo === 'baja' && reg.motivo === VENTA;
+
+function abrirRegistro(tipo, modeloId = null) {
+  reg = { tipo, motivo: MOTIVOS[tipo][0], items: [], buscando: true };
   cartel.classList.toggle('alta', tipo === 'alta');
   cartel.classList.toggle('baja', tipo === 'baja');
-  $('#cartel-titulo').textContent = tipo === 'alta' ? 'Registrar alta' : 'Registrar baja';
+  $('#cartel-titulo').textContent = tipo === 'alta' ? 'Registrar ingreso' : 'Registrar egreso';
   $('#reg-buscar').value = '';
   $('#reg-nota').value = '';
-  $('#reg-cantidad').value = 1;
-  if (modeloId) elegirModelo(modeloId); else renderCartel();
+  $('#reg-nuevo-modelo').hidden = tipo !== 'alta';
+  if (modeloId) agregarItem(modeloId); else renderCartel();
   cartel.showModal();
+  cartel.querySelector('.cartel-cuerpo').scrollTop = 0;
   if (!modeloId && esCompu()) $('#reg-buscar').focus();
-  else cartel.querySelector('.cartel-cuerpo').scrollTop = 0;
 }
 
-const modeloReg = () => modelos.find(m => m.id === reg?.modeloId);
-const stockReg = () => modeloReg()?.talles?.[reg.talle] || 0;
-
-function elegirModelo(id) {
-  reg.modeloId = id;
-  reg.talle = null;
-  const m = modeloReg();
-  // Si hay un solo talle posible, se elige solo.
-  const posibles = Object.keys(m?.talles || {}).filter(t => reg.tipo === 'alta' || (m.talles[t] || 0) > 0);
-  if (posibles.length === 1) reg.talle = posibles[0];
+function agregarItem(id) {
+  if (!reg.items.some(it => it.modeloId === id)) {
+    const m = modeloPorId(id);
+    reg.items.push({ modeloId: id, cant: {}, extras: [], precio: m?.precio ? String(m.precio) : '' });
+  }
+  reg.buscando = false;
   renderCartel();
 }
 
 function renderCartel() {
   if (!reg) return;
-  const m = modeloReg();
-  if (reg.modeloId && !m) reg.modeloId = null;
-
-  // Paso 1: modelo
-  $('#reg-selector').hidden = !!m;
-  $('#reg-modelo-elegido').hidden = !m;
-  if (m) {
-    $('#reg-modelo-elegido').innerHTML = `
-      <img src="${esc(fotoPrincipal(m))}" alt="" width="40" height="50">
-      <span><b>${esc(m.nombre)}</b><small>${esc([m.marca, m.color].filter(Boolean).join(' · '))} · ${totalModelo(m)} en stock</small></span>
-      <button class="btn btn-borde" type="button" id="reg-cambiar">Cambiar</button>`;
-  } else {
-    renderOpcionesModelo();
-  }
-
-  // Paso 2: talle
-  $('#paso-talle').hidden = !m;
-  if (m) {
-    $('#reg-talles').innerHTML = ordenarTalles(Object.keys(m.talles || {})).map(t => {
-      const n = m.talles[t] || 0;
-      const sinStock = reg.tipo === 'baja' && n <= 0;
-      return `<button type="button" class="opcion-talle" role="radio" data-talle="${esc(t)}"
-        aria-checked="${reg.talle === t}" ${sinStock ? 'disabled' : ''}>
-        <b>${esc(t)}</b><small>hay ${n}</small></button>`;
-    }).join('') || '<p class="vacio">Este modelo no tiene talles. Agregalos en "Editar".</p>';
-  }
-
-  // Pasos 3 y 4: cantidad y motivo
-  const conTalle = !!(m && reg.talle);
-  $('#paso-cantidad').hidden = !conTalle;
-  $('#paso-motivo').hidden = !conTalle;
   $('#reg-motivos').innerHTML = MOTIVOS[reg.tipo].map(x =>
     `<button type="button" class="opcion-motivo" role="radio" data-motivo="${esc(x)}" aria-checked="${reg.motivo === x}">${esc(x)}</button>`
   ).join('');
-
+  renderItems();
+  $('#reg-selector').hidden = !reg.buscando;
+  $('#reg-agregar').hidden = reg.buscando || !reg.items.length;
+  if (reg.buscando) renderOpcionesModelo();
   actualizarResumen();
+}
+
+// Si cambia el stock con el cartel abierto se redibuja, salvo que se esté escribiendo en un campo.
+function refrescarCartel() {
+  if (!cartel.open || !reg) return;
+  const activo = document.activeElement;
+  if (activo && cartel.contains(activo) && activo.tagName === 'INPUT') { actualizarResumen(); return; }
+  renderCartel();
+}
+
+function tallesItem(it, m) {
+  return ordenarTalles([...new Set([...Object.keys(m.talles || {}), ...it.extras])]);
+}
+
+function renderItems() {
+  $('#reg-items').innerHTML = reg.items.map((it, idx) => {
+    const m = modeloPorId(it.modeloId);
+    if (!m) return '';
+    const celdas = tallesItem(it, m).map(t => {
+      const hay = m.talles?.[t] || 0;
+      const n = it.cant[t] || 0;
+      const nuevo = !(t in (m.talles || {}));
+      const sinStock = reg.tipo === 'baja' && hay <= 0;
+      const tope = reg.tipo === 'baja' && n >= hay;
+      return `<div class="it-talle ${n ? 'con' : ''} ${sinStock ? 'sin-stock' : ''}" data-talle="${esc(t)}">
+        <span class="it-t"><b>${esc(t)}</b><small>${nuevo ? 'nuevo' : `hay ${hay}`}</small></span>
+        <span class="it-stepper">
+          <button type="button" data-paso="-1" aria-label="Uno menos del talle ${esc(t)}" ${n <= 0 ? 'disabled' : ''}>−</button>
+          <input type="number" inputmode="numeric" min="0" step="1" data-cant value="${n || ''}" placeholder="0"
+            aria-label="Cantidad del talle ${esc(t)}" ${sinStock ? 'disabled' : ''}>
+          <button type="button" data-paso="1" aria-label="Uno más del talle ${esc(t)}" ${sinStock || tope ? 'disabled' : ''}>+</button>
+        </span>
+      </div>`;
+    }).join('');
+    const otro = reg.tipo === 'alta' ? `
+      <div class="item-otro">
+        <input type="text" maxlength="6" placeholder="Otro talle (ej: 40)" data-otro-input aria-label="Agregar otro talle a ${esc(m.nombre)}">
+        <button type="button" class="btn btn-borde" data-otro>+ Agregar talle</button>
+      </div>` : '';
+    const precio = esVenta() ? `
+      <div class="item-precio">
+        <label>Precio por unidad
+          <span class="moneda"><input type="number" inputmode="numeric" min="0" step="1" data-precio value="${esc(it.precio)}" placeholder="0" aria-label="Precio por unidad de ${esc(m.nombre)}"></span>
+        </label>
+        <span class="item-subtotal" data-subtotal></span>
+      </div>` : '';
+    return `<div class="item" data-idx="${idx}">
+      <div class="item-cab">
+        <img src="${esc(fotoPrincipal(m))}" alt="" width="40" height="50">
+        <span><b>${esc(m.nombre)}</b><small>${esc(m.marca || '')} · ${totalModelo(m)} en stock</small></span>
+        <button type="button" class="btn-icono" data-quitar aria-label="Quitar ${esc(m.nombre)}">${ICONO_CERRAR}</button>
+      </div>
+      <div class="item-talles">${celdas}</div>
+      ${otro}${precio}
+    </div>`;
+  }).join('');
+  reg.items.forEach((it, idx) => actualizarSubtotal(idx));
 }
 
 function renderOpcionesModelo() {
   const q = normalizar($('#reg-buscar').value);
-  const lista = modelos.filter(m => !q || normalizar(`${m.nombre} ${m.marca} ${m.color}`).includes(q));
+  const ya = new Set(reg.items.map(it => it.modeloId));
+  const lista = modelos.filter(m => !ya.has(m.id) && (!q || normalizar(`${m.nombre} ${m.marca} ${m.color}`).includes(q)));
   $('#reg-opciones').innerHTML = lista.map(m => {
     const t = totalModelo(m);
     const sinStock = reg.tipo === 'baja' && t === 0;
@@ -433,32 +540,70 @@ function renderOpcionesModelo() {
   }).join('') || '<li class="vacio">No hay modelos con ese nombre.</li>';
 }
 
-function leerCantidad() {
-  return Math.max(0, Math.floor(Number($('#reg-cantidad').value) || 0));
+function actualizarCelda(celda, it, m) {
+  const t = celda.dataset.talle;
+  const n = it.cant[t] || 0;
+  const hay = m.talles?.[t] || 0;
+  celda.classList.toggle('con', n > 0);
+  celda.querySelector('[data-paso="-1"]').disabled = n <= 0;
+  celda.querySelector('[data-paso="1"]').disabled = reg.tipo === 'baja' && n >= hay;
+}
+
+function actualizarSubtotal(idx) {
+  const el = document.querySelector(`.item[data-idx="${idx}"] [data-subtotal]`);
+  if (!el) return;
+  const it = reg.items[idx];
+  const n = Object.values(it.cant).reduce((s, x) => s + x, 0);
+  el.textContent = n && entero(it.precio) ? `${n} × ${pesos(entero(it.precio))} = ${pesos(n * entero(it.precio))}` : '';
+}
+
+// Junta los renglones con cantidad y valida. Devuelve { lineas, unidades, total, error }.
+function armarRegistro() {
+  const lineas = [];
+  let error = '';
+  for (const it of reg.items) {
+    const m = modeloPorId(it.modeloId);
+    if (!m) continue;
+    const precio = esVenta() ? entero(it.precio) : null;
+    let delModelo = 0;
+    for (const [t, n] of Object.entries(it.cant)) {
+      if (!n) continue;
+      const hay = m.talles?.[t] || 0;
+      if (reg.tipo === 'baja' && n > hay) error ||= `${m.nombre} talle ${t}: hay ${hay}, no alcanza para ${n}.`;
+      lineas.push({ modelo: m, talle: t, delta: reg.tipo === 'alta' ? n : -n, precio });
+      delModelo += n;
+    }
+    if (esVenta() && delModelo && !precio) error ||= `Falta el precio de ${m.nombre}.`;
+  }
+  const u = lineas.reduce((s, l) => s + Math.abs(l.delta), 0);
+  const total = lineas.reduce((s, l) => s + Math.abs(l.delta) * (l.precio || 0), 0);
+  return { lineas, unidades: u, total, error };
 }
 
 function actualizarResumen() {
   const r = $('#reg-resumen');
   const ok = $('#reg-ok');
-  const m = modeloReg();
-  const signo = reg.tipo === 'alta' ? '+' : '−';
-  const palabra = reg.tipo === 'alta' ? 'alta' : 'baja';
-  r.classList.remove('error');
-  ok.textContent = `Registrar ${palabra}`;
+  const ingreso = reg.tipo === 'alta';
+  const { lineas, unidades: u, total, error } = armarRegistro();
+  r.classList.toggle('error', !!error);
   ok.disabled = true;
-  if (!m) { r.textContent = 'Elegí el modelo.'; return; }
-  if (!reg.talle) { r.textContent = 'Elegí el talle.'; return; }
-  const cant = leerCantidad();
-  if (!cant) { r.textContent = 'Poné la cantidad.'; return; }
-  const hay = stockReg();
-  const queda = reg.tipo === 'alta' ? hay + cant : hay - cant;
-  if (queda < 0) {
-    r.classList.add('error');
-    r.textContent = `Del talle ${reg.talle} hay ${hay}. No se puede dar de baja ${cant}.`;
-    return;
-  }
-  r.innerHTML = `${esc(m.nombre)} · talle <b>${esc(reg.talle)}</b>: hay <b>${hay}</b> <span class="flecha">→</span> quedan <b>${queda}</b>`;
-  ok.textContent = `Registrar ${palabra} (${signo}${cant})`;
+  ok.textContent = ingreso ? 'Registrar ingreso' : esVenta() ? 'Registrar venta' : 'Registrar egreso';
+
+  document.querySelectorAll('[data-precio]').forEach(inp => {
+    const it = reg.items[inp.closest('.item').dataset.idx];
+    const lleva = Object.values(it.cant).some(Boolean);
+    inp.classList.toggle('falta', lleva && !entero(it.precio));
+  });
+
+  if (!reg.items.length) { r.textContent = 'Elegí un modelo.'; return; }
+  if (!u) { r.textContent = 'Poné la cantidad en al menos un talle.'; return; }
+  if (error) { r.textContent = error; return; }
+
+  const modelosN = new Set(lineas.map(l => l.modelo.id)).size;
+  const signo = ingreso ? '+' : '−';
+  r.innerHTML = `<b>${u}</b> ${u === 1 ? 'unidad' : 'unidades'} en <b>${modelosN}</b> ${modelosN === 1 ? 'modelo' : 'modelos'}`
+    + (esVenta() ? ` · Total <b>${pesos(total)}</b>` : '');
+  ok.textContent += esVenta() ? ` (${pesos(total)})` : ` (${signo}${u})`;
   ok.disabled = false;
 }
 
@@ -468,49 +613,119 @@ $('#reg-buscar').addEventListener('keydown', e => {
   if (e.key !== 'Enter') return;
   e.preventDefault();
   const opciones = [...document.querySelectorAll('.opcion-modelo:not(:disabled)')];
-  if (opciones.length === 1) elegirModelo(opciones[0].dataset.id);
+  if (opciones.length === 1) agregarItem(opciones[0].dataset.id);
 });
 
-cartel.addEventListener('click', e => {
-  const opcion = e.target.closest('.opcion-modelo');
-  if (opcion) { elegirModelo(opcion.dataset.id); return; }
-  if (e.target.closest('#reg-cambiar')) {
-    reg.modeloId = null; reg.talle = null;
-    $('#reg-buscar').value = '';
+$('#reg-agregar').addEventListener('click', () => {
+  reg.buscando = true;
+  $('#reg-buscar').value = '';
+  renderCartel();
+  if (esCompu()) $('#reg-buscar').focus();
+  $('#reg-selector').scrollIntoView({ block: 'nearest' });
+});
+
+$('#reg-nuevo-modelo').addEventListener('click', () => abrirForm(null));
+
+$('#reg-motivos').addEventListener('click', e => {
+  const b = e.target.closest('.opcion-motivo');
+  if (!b) return;
+  reg.motivo = b.dataset.motivo;
+  renderCartel();
+});
+
+$('#reg-opciones').addEventListener('click', e => {
+  const b = e.target.closest('.opcion-modelo');
+  if (b && !b.disabled) agregarItem(b.dataset.id);
+});
+
+function agregarTalleOtro(itemEl) {
+  const it = reg.items[itemEl.dataset.idx];
+  const inp = itemEl.querySelector('[data-otro-input]');
+  const t = inp.value.trim().toUpperCase().replace(/[.\s/]/g, '');
+  if (!t) return;
+  if (!it.extras.includes(t)) it.extras.push(t);
+  it.cant[t] = it.cant[t] || 1;
+  renderCartel();
+}
+
+$('#reg-items').addEventListener('click', e => {
+  const itemEl = e.target.closest('.item');
+  if (!itemEl) return;
+  const idx = Number(itemEl.dataset.idx);
+  const it = reg.items[idx];
+  const m = modeloPorId(it.modeloId);
+
+  if (e.target.closest('[data-quitar]')) {
+    reg.items.splice(idx, 1);
+    if (!reg.items.length) reg.buscando = true;
     renderCartel();
-    if (esCompu()) $('#reg-buscar').focus();
     return;
   }
-  const talle = e.target.closest('.opcion-talle');
-  if (talle && !talle.disabled) {
-    reg.talle = talle.dataset.talle;
+  if (e.target.closest('[data-otro]')) { agregarTalleOtro(itemEl); return; }
+
+  const paso = e.target.closest('[data-paso]');
+  if (paso && !paso.disabled) {
+    const celda = paso.closest('.it-talle');
+    const t = celda.dataset.talle;
+    const hay = m.talles?.[t] || 0;
+    let n = (it.cant[t] || 0) + Number(paso.dataset.paso);
+    n = Math.max(0, reg.tipo === 'baja' ? Math.min(n, hay) : n);
+    it.cant[t] = n;
+    celda.querySelector('[data-cant]').value = n || '';
     vibrar();
-    renderCartel();
-    return;
+    actualizarCelda(celda, it, m);
+    actualizarSubtotal(idx);
+    actualizarResumen();
   }
-  const motivo = e.target.closest('.opcion-motivo');
-  if (motivo) { reg.motivo = motivo.dataset.motivo; renderCartel(); }
 });
 
-$('#reg-cantidad').addEventListener('input', actualizarResumen);
-$('#reg-cantidad').addEventListener('focus', e => e.target.select());
-$('#reg-menos').addEventListener('click', () => { $('#reg-cantidad').value = Math.max(1, leerCantidad() - 1); actualizarResumen(); });
-$('#reg-mas').addEventListener('click', () => { $('#reg-cantidad').value = leerCantidad() + 1; actualizarResumen(); });
+$('#reg-items').addEventListener('input', e => {
+  const itemEl = e.target.closest('.item');
+  if (!itemEl) return;
+  const idx = Number(itemEl.dataset.idx);
+  const it = reg.items[idx];
+  const m = modeloPorId(it.modeloId);
+
+  if (e.target.matches('[data-cant]')) {
+    const celda = e.target.closest('.it-talle');
+    const t = celda.dataset.talle;
+    const hay = m.talles?.[t] || 0;
+    let n = entero(e.target.value);
+    if (reg.tipo === 'baja' && n > hay) { n = hay; e.target.value = n || ''; }
+    it.cant[t] = n;
+    actualizarCelda(celda, it, m);
+  } else if (e.target.matches('[data-precio]')) {
+    it.precio = e.target.value;
+  }
+  actualizarSubtotal(idx);
+  actualizarResumen();
+});
+
+$('#reg-items').addEventListener('keydown', e => {
+  if (e.key === 'Enter' && e.target.matches('[data-otro-input]')) {
+    e.preventDefault();
+    agregarTalleOtro(e.target.closest('.item'));
+  }
+});
+
+$('#reg-items').addEventListener('focusin', e => {
+  if (e.target.matches('[data-cant], [data-precio]')) e.target.select();
+});
 
 $('#form-registro').addEventListener('submit', async e => {
   e.preventDefault();
-  const m = modeloReg();
-  const cant = leerCantidad();
-  if (!m || !reg.talle || !cant) return;
-  const hay = stockReg();
-  if (reg.tipo === 'baja' && cant > hay) return;
-  const delta = reg.tipo === 'alta' ? cant : -cant;
+  const { lineas, unidades: u, total, error } = armarRegistro();
+  if (!u || error) return;
+  const { tipo, motivo } = reg;
+  const venta = esVenta();
   const nota = $('#reg-nota').value.trim();
-  const { tipo, talle, motivo } = reg;
   cartel.close();
   vibrar();
-  const movId = await datos.mover(m, talle, delta, tipo, { motivo, nota });
-  toast(`${tipo === 'alta' ? 'Alta' : 'Baja'}: ${m.nombre} talle ${talle} (${delta > 0 ? '+' : '−'}${cant})`, { deshacer: movId });
+  const ids = await datos.registrar({ tipo, motivo, nota, lineas });
+  const texto = tipo === 'alta' ? `Ingreso registrado: +${u} ${u === 1 ? 'unidad' : 'unidades'}`
+    : venta ? `Venta registrada: ${u} ${u === 1 ? 'unidad' : 'unidades'} · ${pesos(total)}`
+    : `Egreso registrado: −${u} ${u === 1 ? 'unidad' : 'unidades'}`;
+  toast(texto, { deshacer: ids });
 });
 
 cartel.addEventListener('close', () => { reg = null; });
@@ -523,7 +738,7 @@ let formCtx = null;
 
 function abrirForm(m) {
   formCtx = { m, fotoData: m?.fotoData || null, talles: new Set(m ? Object.keys(m.talles || {}) : TALLES_BASE) };
-  $('#hf-titulo').textContent = m ? 'Editar modelo' : 'Nuevo modelo';
+  $('#hf-titulo').textContent = m ? 'Editar modelo' : 'Modelo nuevo';
   formModelo.nombre.value = m?.nombre || '';
   formModelo.marca.value = m?.marca || '';
   formModelo.color.value = m?.color || '';
@@ -628,10 +843,15 @@ formModelo.addEventListener('submit', async e => {
     hojaForm.close();
     if (m) {
       toast('Modelo actualizado.');
+    } else if (cartel.open && reg?.tipo === 'alta') {
+      // Creado desde el cartel de ingreso: se suma como renglón.
+      agregarItem(id);
+      toast('Modelo creado. Cargá las cantidades.');
     } else {
-      // Recién creado: se abre el cartel de alta para cargarle el stock.
+      // Creado desde Stock: se abre el ingreso para cargarle mercadería.
+      irA('ingresos');
       abrirRegistro('alta', id);
-      toast('Modelo creado. Cargale el stock.');
+      toast('Modelo creado. Cargá las cantidades.');
     }
   } catch {
     $('#hf-error').textContent = 'No se pudo guardar. Revisá la conexión.';
@@ -667,13 +887,13 @@ document.querySelectorAll('dialog').forEach(d => {
 
 const elToast = $('#toast');
 let timerToast = null;
-let movParaDeshacer = null;
+let paraDeshacer = null;
 if (!elToast.showPopover) elToast.hidden = true;
 
 function toast(texto, { error = false, deshacer = null } = {}) {
   $('#toast-texto').textContent = texto;
   elToast.classList.toggle('error', error);
-  movParaDeshacer = deshacer;
+  paraDeshacer = deshacer;
   $('#toast-deshacer').hidden = !deshacer;
   if (error) navigator.vibrate?.([30, 40, 30]);
   // Un cartel abierto bloquea todo lo de afuera: el aviso se mete adentro para que "Deshacer" funcione.
@@ -687,7 +907,7 @@ function toast(texto, { error = false, deshacer = null } = {}) {
     elToast.hidden = false;
   }
   clearTimeout(timerToast);
-  timerToast = setTimeout(cerrarToast, deshacer ? 6000 : 3000);
+  timerToast = setTimeout(cerrarToast, deshacer ? 7000 : 3000);
 }
 
 function cerrarToast() {
@@ -696,12 +916,12 @@ function cerrarToast() {
 }
 
 $('#toast-deshacer').addEventListener('click', async () => {
-  const id = movParaDeshacer;
-  if (!id) return;
-  movParaDeshacer = null;
+  const ids = paraDeshacer;
+  if (!ids) return;
+  paraDeshacer = null;
   cerrarToast();
   vibrar();
-  await datos.deshacer(id);
+  await datos.deshacer(ids);
   toast('Listo, se deshizo.');
 });
 })();
