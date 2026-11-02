@@ -1,0 +1,8 @@
+# Material original del cliente (pesado): queda local / Google Drive
+_material/
+.env
+.env.*
+node_modules/
+.vercel/
+.DS_Store
+Thumbs.db
