@@ -250,24 +250,22 @@ function renderStock() {
       <th scope="col">Total</th>
     </tr></thead><tbody>${filas || `<tr><td colspan="${talles.length + 2}" class="vacio">No hay modelos con ese nombre.</td></tr>`}</tbody>`;
 
-  // Tarjetas (celular).
+  // Tarjetas (celular): arriba foto, nombre y total; abajo un casillero por talle con la cantidad grande.
   $('#tarjetas-stock').innerHTML = visibles.map(m => {
     const t = totalModelo(m);
-    const mini = ordenarTalles(Object.keys(m.talles || {})).map(tl => {
+    const casilleros = ordenarTalles(Object.keys(m.talles || {})).map(tl => {
       const n = m.talles[tl] || 0;
-      return `<span class="mini-talle ${n ? 'hay' : 'cero'}">${esc(tl)}·${n}</span>`;
+      return `<li class="casillero ${n ? 'hay' : 'cero'}"><span>${esc(tl)}</span><b>${n}</b></li>`;
     }).join('');
     return `<li class="tarjeta ${t ? '' : 'agotado'}">
-      <img src="${esc(fotoPrincipal(m))}" alt="" loading="lazy" width="60" height="76">
+      <img src="${esc(fotoPrincipal(m))}" alt="" loading="lazy" width="48" height="60">
       <div class="tarjeta-info">
-        <p class="tarjeta-marca">${esc(m.marca)}${m.precio ? ` · ${pesos(m.precio)}` : ''}</p>
+        <p class="tarjeta-marca">${esc(m.marca)}</p>
         <p class="tarjeta-nombre">${esc(m.nombre)}</p>
-        <div class="mini-talles">${mini}</div>
       </div>
-      <div class="tarjeta-lado">
-        <div class="tarjeta-total">${t}<small>${t === 1 ? 'unidad' : 'unid.'}</small></div>
-        <button class="btn-editar" type="button" data-editar="${esc(m.id)}" aria-label="Editar ${esc(m.nombre)}">${ICONO_EDITAR}</button>
-      </div>
+      <div class="tarjeta-total">${t}<small>${t === 1 ? 'unidad' : 'unid.'}</small></div>
+      <button class="btn-editar" type="button" data-editar="${esc(m.id)}" aria-label="Editar ${esc(m.nombre)}">${ICONO_EDITAR}</button>
+      <ul class="casilleros" aria-label="Stock por talle de ${esc(m.nombre)}">${casilleros}</ul>
     </li>`;
   }).join('') || (modelos.length ? '<li class="vacio"><p>No hay modelos con ese nombre.</p></li>' : '');
 
